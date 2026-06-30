@@ -70,7 +70,7 @@ export const mockAuditors: SelectiveDisclosureViewer[] = [
     id: 'auditor_01',
     name: 'Institutional Compliance Team',
     role: 'Internal Auditor',
-    organization: 'ZBank Treasury Group',
+    organization: 'ΛRCΛNUM Treasury Group',
     accessGranted: true,
     lastAccessed: '2026-06-30T10:14:00Z'
   },

@@ -7,7 +7,6 @@ import { ExplorerComparison } from './views/ExplorerComparison';
 import { CompliancePanel } from './views/CompliancePanel';
 import { TreasuryOverview } from './views/TreasuryOverview';
 import { 
-  Shield, 
   LayoutGrid, 
   Send, 
   Eye, 
@@ -61,9 +60,9 @@ const DashboardApp: React.FC = () => {
     <div className="app-container animate-fade-in">
       {/* Platform Top Header */}
       <header className="header">
-        <div className="logo-section">
-          <Shield size={24} className="logo-icon" />
-          <span className="logo-text">ZBank</span>
+        <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <img src="/logo.png" alt="ΛRCΛNUM Logo" style={{ height: '24px', width: 'auto', filter: 'drop-shadow(0 0 8px rgba(243, 183, 36, 0.35))' }} />
+          <span className="logo-text" style={{ fontStyle: 'normal', letterSpacing: '0.15em' }}>ΛRCΛNUM</span>
           <span style={{ fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.1em', background: 'rgba(255,255,255,0.06)', color: 'var(--color-text-secondary)', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
             zk-Stellar Protocol
           </span>

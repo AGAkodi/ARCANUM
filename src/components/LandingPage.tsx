@@ -23,9 +23,9 @@ export const LandingPage: React.FC = () => {
       
       {/* Landing Header */}
       <header className="landing-header">
-        <div className="logo-section">
-          <Shield size={24} className="logo-icon" />
-          <span className="logo-text">ZBank</span>
+        <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <img src="/logo.png" alt="ΛRCΛNUM Logo" style={{ height: '24px', width: 'auto', filter: 'drop-shadow(0 0 8px rgba(243, 183, 36, 0.35))' }} />
+          <span className="logo-text" style={{ fontStyle: 'normal', letterSpacing: '0.15em' }}>ΛRCΛNUM</span>
         </div>
         <button 
           className="btn-primary"
@@ -188,7 +188,7 @@ export const LandingPage: React.FC = () => {
       {/* Landing Footer */}
       <footer className="landing-footer">
         <span style={{ color: 'var(--color-text-muted)' }}>
-          © 2026 ZBank Inc. Powered by Stellar Soroban contracts and zk-SNARKs.
+          © 2026 ΛRCΛNUM Inc. Powered by Stellar Soroban contracts and zk-SNARKs.
         </span>
         <span style={{ color: 'var(--color-text-muted)' }}>
           Institutional Grade Blockchain Privacy

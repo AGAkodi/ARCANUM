@@ -57,7 +57,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const connectWallet = async () => {
     // Simulate interactive wallet extension authorization
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    setWalletAddress('GAZBANK_TREASURY_CORP_3891023812');
+    setWalletAddress('GA_ARCANUM_TREASURY_CORP_3891023812');
     setWalletConnected(true);
     setActiveTab('overview');
   };

@@ -131,7 +131,7 @@ export const ExplorerComparison: React.FC = () => {
             <div className="explorer-data-row">
               <span className="explorer-data-lbl">Sender Wallet</span>
               <span className="explorer-data-val mono">
-                GAZBANK_TREASURY_CORP_3891023812
+                GA_ARCANUM_TREASURY_CORP_3891023812
               </span>
             </div>
 
