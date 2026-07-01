@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 
+circuits/toy_circuit/target
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
