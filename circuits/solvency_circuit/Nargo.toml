@@ -1,0 +1,6 @@
+[package]
+name = "solvency_circuit"
+type = "bin"
+authors = [""]
+
+[dependencies]

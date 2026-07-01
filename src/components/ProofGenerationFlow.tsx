@@ -62,105 +62,57 @@ export const ProofGenerationFlow: React.FC<ProofGenerationFlowProps> = ({
   const [consoleLog, setConsoleLog] = useState<string>(steps[0].activeMessage);
   const [progressPercent, setProgressPercent] = useState<number>(0); // 0%, 50%, 100% connector line
 
-  // Run a random delay helper
-  const getRandomDelay = (min: number = 1800, max: number = 3200) => {
-    return Math.floor(Math.random() * (max - min + 1) + min);
-  };
-
   useEffect(() => {
     let active = true;
 
     const runZKEngine = async () => {
-      // ----------------------------------------------------
-      // STAGE 1: COMPLIANCE PROOF
-      // ----------------------------------------------------
-      if (!active) return;
-      setConsoleLog(steps[0].activeMessage);
-      const delay1 = getRandomDelay();
-      await new Promise((resolve) => setTimeout(resolve, delay1));
-
-      if (simulateFailure || recipient.toUpperCase().includes('SANCTION')) {
-        if (!active) return;
-        setStepStates(['failed', 'pending', 'pending']);
-        setConsoleLog('Error: Recipient address matched global sanction node index 491a. Aborting compilation.');
-        
-        // Wait briefly so the user sees the fail state before transitioning to the error screen
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        if (!active) return;
-        onFailure('Compliance screening rejected recipient address (OFAC SDN matching flag).');
-        return;
-      }
-
-      // Stage 1 Success
-      if (!active) return;
-      setStepStates(['complete', 'active', 'pending']);
-      setProgressPercent(33);
-      setConsoleLog(steps[0].successMessage);
-
-      // ----------------------------------------------------
-      // STAGE 2: AMOUNT PROOF
-      // ----------------------------------------------------
-      const delay2 = getRandomDelay();
-      await new Promise((resolve) => setTimeout(resolve, delay2));
-      if (!active) return;
-      setConsoleLog(steps[1].activeMessage);
-
-      // Stage 2 Success
-      if (!active) return;
-      setStepStates(['complete', 'complete', 'active']);
-      setProgressPercent(66);
-      setConsoleLog(steps[1].successMessage);
-
-      // ----------------------------------------------------
-      // STAGE 3: STELLAR VERIFICATION
-      // ----------------------------------------------------
-      const delay3 = getRandomDelay();
-      await new Promise((resolve) => setTimeout(resolve, delay3));
-      if (!active) return;
-      setConsoleLog(steps[2].activeMessage);
-
-      // Generate actual payload parameters via our service mock
       try {
-        const result = await stellarZkService.verifyOnStellar(
-          'zk_comp_proof_0x' + Math.random().toString(16).substr(2, 8),
-          'zk_amt_proof_0x' + Math.random().toString(16).substr(2, 8),
-          () => {}
+        // Real Noir/UltraHonk proving in the browser — each step's status is
+        // driven by the actual prover, not timers.
+        const transaction = await stellarZkService.submitConfidentialPayment(
+          recipient,
+          amount,
+          memo,
+          currency,
+          (stepIndex, status, msg) => {
+            if (!active) return;
+            if (status === 'generating') {
+              setStepStates((prev) =>
+                prev.map((s, i) => (i < stepIndex ? 'complete' : i === stepIndex ? 'active' : 'pending'))
+              );
+              setConsoleLog(msg || steps[stepIndex].activeMessage);
+            } else if (status === 'success') {
+              setStepStates((prev) =>
+                prev.map((s, i) => (i <= stepIndex ? 'complete' : i === stepIndex + 1 ? 'active' : 'pending'))
+              );
+              setProgressPercent(Math.round(((stepIndex + 1) / steps.length) * 100));
+              setConsoleLog(msg || steps[stepIndex].successMessage);
+            } else {
+              setStepStates((prev) =>
+                prev.map((s, i) => (i < stepIndex ? 'complete' : i === stepIndex ? 'failed' : 'pending'))
+              );
+              setConsoleLog('Error: ' + (msg || 'Proof generation failed.'));
+            }
+          },
+          { simulateFailure }
         );
 
         if (!active) return;
-        setStepStates(['complete', 'complete', 'complete']);
-        setProgressPercent(100);
         setConsoleLog(steps[2].successMessage);
-
-        // Construct final mock transaction payload
-        const transaction = {
-          id: 'tx_' + Math.floor(Math.random() * 100000000),
-          timestamp: new Date().toISOString(),
-          type: 'Sent' as const,
-          counterparty: recipient,
-          counterpartyMasked: recipient.slice(0, 4) + '...' + recipient.slice(-4),
-          amount: amount,
-          amountMasked: '••••••••••',
-          currency: currency,
-          complianceStatus: 'Compliant' as const,
-          proofVerified: true,
-          zkProofHash: 'zk_snark_proof_0x' + Math.random().toString(16).substr(2, 16),
-          stellarTxHash: result.txHash,
-          isPrivate: true,
-          memo: memo || 'Institutional transfer'
-        };
 
         // Brief delay for success visual highlight
         await new Promise((resolve) => setTimeout(resolve, 1200));
         if (!active) return;
         onSuccess(transaction);
       } catch (err: any) {
-        if (!active) return;
-        setStepStates(['complete', 'complete', 'failed']);
-        setConsoleLog('Error: Soroban verification signatures validation failed.');
+        // Wait briefly so the user sees the fail state before transitioning to the error screen
         await new Promise((resolve) => setTimeout(resolve, 1500));
         if (!active) return;
-        onFailure(err.message || 'On-chain proof verification rejected.');
+        onFailure(
+          err?.message?.includes('Compliance')
+            ? 'Compliance screening rejected recipient address (OFAC SDN matching flag).'
+            : err?.message || 'On-chain proof verification rejected.'
+        );
       }
     };
 

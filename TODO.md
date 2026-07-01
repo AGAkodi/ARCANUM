@@ -53,105 +53,61 @@ Mark items `[x]` as we finish them.
 
 ---
 
-## Phase 2 — Real ZK Circuits (Noir) 🔴 IN PROGRESS
+## Phase 2 — Real ZK Circuits (Noir) ✅ COMPLETE
+
+*Implementation notes (2026-07-01): bb 5.x renamed `bb prove_ultra_honk` → `bb prove` and `bb write_vk_ultra_honk` → `bb write_vk` (UltraHonk is the default scheme). `@noir-lang/backend_barretenberg` is deprecated — the browser backend is `UltraHonkBackend` from `@aztec/bb.js`, pinned to `5.0.0-nightly.20260522` to match the local bb CLI (bb.js 4.4.0 traps with `RuntimeError: unreachable` on beta.22 ACIR). The prover runs single-threaded because multithreading needs SharedArrayBuffer → COOP/COEP headers, which would break cross-origin assets (Google Fonts). First proof in a fresh browser takes ~40 s (one-time SRS download, cached in IndexedDB); subsequent proofs ~0.5 s. Dev harness at `/zk-test` runs all circuits in the browser without the wallet gate.*
 
 ### Immediate Fix First
 
-- [ ] Push compiled toy circuit artifacts to GitHub (target/ was gitignored)
-  ```bash
-  git add -f circuits/toy_circuit/target/
-  git commit -m "fix: add compiled circuit artifacts"
-  git push
-  ```
+- [x] Push compiled toy circuit artifacts to GitHub (was done in commit `2c40826`)
 
 ### Environment
 
-- [ ] Document exact `nargo --version` and `bb --version` in `circuits/README.md`
-- [ ] Confirm all three circuits compile and prove before moving to Phase 3
+- [x] Document exact `nargo --version` and `bb --version` in `circuits/README.md`
+- [x] Confirm all three circuits compile and prove before moving to Phase 3
 
 ### Circuit 1 — Compliance / Sanctions Check 🔴 PRIORITY
+
 *Proves: Recipient address is NOT on sanctions list — no address revealed on-chain*
 
-- [ ] `nargo new compliance_circuit` inside `circuits/`
-- [ ] Write circuit (`src/main.nr`):
-  - Private inputs: `recipient_hash: Field`, `merkle_path: [Field; 10]`, `merkle_indices: [u1; 10]`
-  - Public inputs: `sanctions_root: pub Field`
-  - Assert non-membership via Poseidon2 Merkle proof
-  - (Simplified alternative if Merkle takes too long: hardcode 10 sanctioned address hashes in an array, assert recipient_hash does not match any)
-- [ ] Write passing `Prover.toml` — address NOT on list
-- [ ] Write failing test case — address IS on list (assert should fail)
-- [ ] `nargo check`
-- [ ] `nargo execute witness`
-- [ ] `bb prove_ultra_honk -b ./target/compliance_circuit.json -w ./target/witness.gz -o ./target/proof`
-- [ ] `bb write_vk_ultra_honk -b ./target/compliance_circuit.json -o ./target/vk`
-- [ ] `git add -f circuits/compliance_circuit/target/` and push
+- [x] Create `compliance_circuit` inside `circuits/`
+- [x] Write circuit (`src/main.nr`) — simplified list variant: private `recipient_hash: Field`, public `sanctions_list: [Field; 10]`, assert recipient_hash differs from every entry
+- [x] Write passing `Prover.toml` — address NOT on list
+- [x] Write failing test case — address IS on list (`#[test(should_fail)]`, passes)
+- [x] `nargo check` + `nargo test`
+- [x] `nargo execute witness`
+- [x] `bb prove` + `bb write_vk` + `bb verify` — proof verified
+- [x] `target/` artifacts committed
 
 ### Circuit 2 — Amount Range Proof 🔴 PRIORITY
+
 *Proves: Payment amount > 0 AND amount ≤ wallet balance — neither number revealed*
 
-- [ ] `nargo new amount_circuit` inside `circuits/`
-- [ ] Write circuit (`src/main.nr`):
-  ```rust
-  fn main(amount: u64, balance: u64, min_amount: pub u64) {
-      assert(amount >= min_amount);
-      assert(amount <= balance);
-  }
-  ```
-- [ ] Passing `Prover.toml`: `amount = "5000"`, `balance = "10000"`, `min_amount = "1"`
-- [ ] Failing test: `amount = "15000"`, `balance = "10000"` — should fail
-- [ ] `nargo check`
-- [ ] `nargo execute witness`
-- [ ] `bb prove_ultra_honk -b ./target/amount_circuit.json -w ./target/witness.gz -o ./target/proof`
-- [ ] `bb write_vk_ultra_honk -b ./target/amount_circuit.json -o ./target/vk`
-- [ ] `git add -f circuits/amount_circuit/target/` and push
+- [x] Create `amount_circuit` inside `circuits/`
+- [x] Write circuit — `assert(amount >= min_amount); assert(amount <= balance);` (amount/balance private, min_amount public)
+- [x] Passing `Prover.toml`: `amount = "5000"`, `balance = "10000"`, `min_amount = "1"`
+- [x] Failing tests: amount over balance + zero amount (`should_fail`, both pass)
+- [x] `nargo check` + `nargo test` + `nargo execute witness`
+- [x] `bb prove` + `bb write_vk` + `bb verify` — proof verified
+- [x] `target/` artifacts committed
 
-### Circuit 3 — Solvency Proof 🟡 DO IF TIME ALLOWS
+### Circuit 3 — Solvency Proof ✅ DONE (was stretch)
+
 *Proves: Total assets > total liabilities — balance sheet stays hidden*
 
-- [ ] `nargo new solvency_circuit` inside `circuits/`
-- [ ] Write circuit:
-  ```rust
-  fn main(total_assets: u64, total_liabilities: u64) {
-      assert(total_assets > total_liabilities);
-  }
-  ```
-- [ ] Compile, prove, push same as above
+- [x] Create `solvency_circuit` inside `circuits/`
+- [x] Write circuit — `assert(total_assets > total_liabilities);` (both private, no public inputs)
+- [x] Compile, test, prove, verify — `target/` artifacts committed
 
 ### Compile to WASM for Browser
 
-- [ ] `nargo compile` for each circuit
-- [ ] `pnpm add @noir-lang/noir_js @noir-lang/backend_barretenberg` in root
-- [ ] Copy compiled `.json` files into `src/circuits/`:
-  - `src/circuits/compliance_circuit.json`
-  - `src/circuits/amount_circuit.json`
-  - `src/circuits/solvency_circuit.json`
-- [ ] Write `src/lib/zkProver.ts`:
-  ```typescript
-  import { Noir } from '@noir-lang/noir_js';
-  import { UltraHonkBackend } from '@noir-lang/backend_barretenberg';
-
-  export async function generateProof(
-    circuitJson: object,
-    inputs: Record<string, string>
-  ) {
-    const backend = new UltraHonkBackend(circuitJson as any);
-    const noir = new Noir(circuitJson as any);
-    const { witness } = await noir.execute(inputs);
-    const proof = await backend.generateProof(witness);
-    return proof;
-  }
-
-  export async function verifyProofLocally(
-    circuitJson: object,
-    proof: object
-  ) {
-    const backend = new UltraHonkBackend(circuitJson as any);
-    return await backend.verifyProof(proof as any);
-  }
-  ```
-- [ ] Replace all fake `setTimeout` steps in `stellarZkService.ts` with real `generateProof()` calls
-- [ ] Test proof generation works in browser (check console for errors)
-- [ ] Push all changes
+- [x] Compiled ACIR (`target/<name>.json`) produced for each circuit
+- [x] `pnpm add @noir-lang/noir_js@1.0.0-beta.22 @aztec/bb.js@5.0.0-nightly.20260522`
+- [x] Copy compiled `.json` files into `src/circuits/` (compliance, amount, solvency)
+- [x] Write `src/lib/zkProver.ts` — `generateProof`, `verifyProofLocally`, `hashToField`; shared WASM instance, cached backends, vk-hash caching
+- [x] Replace all fake `setTimeout` steps in `stellarZkService.ts` with real `generateProof()` calls (`ProofGenerationFlow` now drives the UI from real prover progress; local verification runs in step 3, on-chain submission still simulated until Phase 3/4)
+- [x] Test proof generation works in browser — all 3 circuits prove + verify at `/zk-test`, sanctioned-address case correctly fails
+- [x] Push all changes
 
 ---
 
