@@ -35,3 +35,4 @@ contracts/**/test_snapshots
 *.njsproj
 *.sln
 *.sw?
+.claude
