@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldAlert, Cpu, Check, Loader2 } from 'lucide-react';
 import { stellarZkService } from '../services/stellarZkService';
+import { useSession } from '../context/SessionContext';
 
 interface ProofGenerationFlowProps {
   recipient: string;
@@ -33,6 +34,7 @@ export const ProofGenerationFlow: React.FC<ProofGenerationFlowProps> = ({
   onSuccess,
   onFailure
 }) => {
+  const { walletAddress, network } = useSession();
   const steps: ProverStep[] = [
     {
       id: 0,
@@ -51,9 +53,9 @@ export const ProofGenerationFlow: React.FC<ProofGenerationFlowProps> = ({
     {
       id: 2,
       label: 'Verifying on Stellar',
-      subtext: 'Publishing proof credentials to Soroban anchors for on-chain validation',
-      activeMessage: 'Invoking Stellar Soroban verifier smart contract. Simulating consensus...',
-      successMessage: 'Verification complete. Ledger block synced successfully.'
+      subtext: 'Both proofs verified by the zbank_verifier Soroban contract before funds move',
+      activeMessage: 'Invoking Stellar Soroban verifier smart contract on testnet...',
+      successMessage: 'Proofs verified on-chain. Transfer settled in ledger.'
     }
   ];
 
@@ -94,7 +96,7 @@ export const ProofGenerationFlow: React.FC<ProofGenerationFlowProps> = ({
               setConsoleLog('Error: ' + (msg || 'Proof generation failed.'));
             }
           },
-          { simulateFailure }
+          { simulateFailure, walletAddress, network }
         );
 
         if (!active) return;

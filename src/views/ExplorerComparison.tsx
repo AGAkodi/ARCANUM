@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
 import { useSession } from '../context/SessionContext';
-import { Shield, Eye, CheckCircle2, Lock } from 'lucide-react';
+import { Shield, Eye, CheckCircle2, Lock, ExternalLink } from 'lucide-react';
 import { VerifiedBadge } from '../components/VerifiedBadge';
+import { useHorizonTx, isRealTxHash } from '../lib/useHorizon';
+import { explorerTxUrl } from '../config/contracts';
 
 export const ExplorerComparison: React.FC = () => {
   const { payments, selectedTx, setSelectedTx, walletAddress } = useSession();
   const [mobileTab, setMobileTab] = useState<'institution' | 'public'>('institution');
+  const activeTxForHook = selectedTx || payments.find((tx) => tx.complianceStatus === 'Compliant') || payments[0];
+  // Real on-chain record from Horizon when the tx landed on testnet
+  const onChainTx = useHorizonTx(activeTxForHook?.stellarTxHash);
 
   // If no transactions exist, show empty state
   if (payments.length === 0) {
@@ -16,9 +21,7 @@ export const ExplorerComparison: React.FC = () => {
     );
   }
 
-  // Filter compliant ones for visual explorer view
-  const compliantPayments = payments.filter((tx) => tx.complianceStatus === 'Compliant');
-  const activeTx = selectedTx || compliantPayments[0] || payments[0];
+  const activeTx = activeTxForHook;
 
   return (
     <div className="animate-fade-in">
@@ -202,8 +205,30 @@ export const ExplorerComparison: React.FC = () => {
           >
             <div className="explorer-data-row">
               <span className="explorer-data-lbl">Transaction Hash</span>
-              <span className="explorer-data-val mono">{activeTx.stellarTxHash}</span>
+              {isRealTxHash(activeTx.stellarTxHash) ? (
+                <a
+                  href={explorerTxUrl(activeTx.stellarTxHash)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="explorer-data-val mono"
+                  style={{ color: 'var(--color-accent)', display: 'inline-flex', alignItems: 'center', gap: '4px', wordBreak: 'break-all' }}
+                >
+                  {activeTx.stellarTxHash.slice(0, 20)}…{activeTx.stellarTxHash.slice(-8)}
+                  <ExternalLink size={11} />
+                </a>
+              ) : (
+                <span className="explorer-data-val mono">{activeTx.stellarTxHash}</span>
+              )}
             </div>
+
+            {onChainTx && (
+              <div className="explorer-data-row">
+                <span className="explorer-data-lbl">Ledger / Fee</span>
+                <span className="explorer-data-val mono">
+                  #{onChainTx.ledger.toLocaleString()} · {(parseInt(onChainTx.feeCharged) / 1e7).toFixed(5)} XLM
+                </span>
+              </div>
+            )}
 
             <div className="explorer-data-row">
               <span className="explorer-data-lbl">Sender Wallet</span>
@@ -233,7 +258,9 @@ export const ExplorerComparison: React.FC = () => {
 
             <div className="explorer-data-row">
               <span className="explorer-data-lbl">Timestamp</span>
-              <span className="explorer-data-val">{new Date(activeTx.timestamp).toLocaleString()}</span>
+              <span className="explorer-data-val">
+                {new Date(onChainTx?.createdAt ?? activeTx.timestamp).toLocaleString()}
+              </span>
             </div>
 
             <div className="explorer-data-row">
@@ -251,7 +278,9 @@ export const ExplorerComparison: React.FC = () => {
             <div className="explorer-data-row">
               <span className="explorer-data-lbl">On-Chain State</span>
               <span className="badge-status compliant" style={{ fontSize: '0.7rem' }}>
-                VERIFIED & COMPLIANT
+                {onChainTx
+                  ? `CONFIRMED IN LEDGER #${onChainTx.ledger.toLocaleString()} (LIVE)`
+                  : 'VERIFIED & COMPLIANT'}
               </span>
             </div>
           </div>

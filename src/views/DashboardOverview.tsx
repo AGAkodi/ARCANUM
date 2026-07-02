@@ -2,8 +2,10 @@ import React from 'react';
 import { useSession } from '../context/SessionContext';
 import { VerifiedBadge } from '../components/VerifiedBadge';
 import { RedactedValue } from '../components/RedactedValue';
-import { ArrowUpRight, ArrowDownLeft, Shield, Eye, Network } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, Shield, Eye, Network, ExternalLink } from 'lucide-react';
 import type { PaymentTransaction } from '../mocks/payments';
+import { isRealTxHash } from '../lib/useHorizon';
+import { explorerTxUrl } from '../config/contracts';
 
 export const DashboardOverview: React.FC = () => {
   const {
@@ -177,9 +179,22 @@ export const DashboardOverview: React.FC = () => {
                     />
                   </td>
                   <td>
-                    <span className={`badge-status ${tx.complianceStatus.toLowerCase()}`}>
-                      {tx.complianceStatus === 'Compliant' ? 'Compliant' : tx.complianceStatus === 'Pending' ? 'Pending' : 'Failed'}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span className={`badge-status ${tx.complianceStatus.toLowerCase()}`}>
+                        {tx.complianceStatus === 'Compliant' ? 'Compliant' : tx.complianceStatus === 'Pending' ? 'Pending' : 'Failed'}
+                      </span>
+                      {isRealTxHash(tx.stellarTxHash) && (
+                        <a
+                          href={explorerTxUrl(tx.stellarTxHash)}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Confirmed on Stellar testnet — view on stellar.expert"
+                          style={{ color: 'var(--color-success)', display: 'inline-flex', alignItems: 'center', gap: '2px', fontSize: '0.7rem', fontWeight: 600 }}
+                        >
+                          Testnet <ExternalLink size={10} />
+                        </a>
+                      )}
+                    </div>
                   </td>
                   <td>
                     {tx.complianceStatus === 'Compliant' ? (

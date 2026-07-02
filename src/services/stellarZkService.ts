@@ -1,5 +1,6 @@
 import type { PaymentTransaction } from '../mocks/payments';
 import type { ProofResult } from '../lib/zkProver';
+import { CONTRACTS } from '../config/contracts';
 
 export interface ProofGenerationStep {
   label: string;
@@ -9,22 +10,31 @@ export interface ProofGenerationStep {
 
 type ProgressCallback = (status: 'generating' | 'success' | 'failed', message?: string) => void;
 
+export interface PaymentOptions {
+  /** Demo toggle: force the recipient onto the sanctions register */
+  simulateFailure?: boolean;
+  /** Connected Freighter wallet (proof balance source + tx sender) */
+  walletAddress?: string | null;
+  /** Freighter's active network — on-chain submission requires testnet */
+  network?: 'mainnet' | 'testnet';
+}
+
 /**
  * Demo sanctions register. In production this list is published by the
  * compliance authority; here it seeds the circuit's public sanctions_list.
  * The circuit takes exactly 10 entries — unused slots are filled with
- * reserved sentinel hashes.
+ * reserved sentinel values no 31-byte address hash can collide with.
  */
 const SANCTIONED_ADDRESSES = ['GBOFAC_SANCTIONED_ADDRESS_TEST_1234567890'];
 const SANCTIONS_LIST_SIZE = 10;
 
 /**
- * Demo balance (in stroops) used for the amount range proof until the real
- * Horizon balance is wired in (Phase 4/7). 10,000,000 XLM.
+ * Fallback balance (in stroops) for the range proof when no wallet is
+ * connected or Horizon is unreachable. 10,000,000 XLM.
  */
-const DEMO_BALANCE_STROOPS = 10_000_000n * 10_000_000n;
+const FALLBACK_BALANCE_STROOPS = 10_000_000n * 10_000_000n;
 
-/** Amounts are proven in stroops (1 XLM = 10^7 stroops) as u64 field inputs. */
+/** Amounts are proven and transferred in stroops (1 XLM = 10^7 stroops). */
 function toStroops(amount: number): bigint {
   return BigInt(Math.round(amount * 1e7));
 }
@@ -41,8 +51,6 @@ async function buildSanctionsList(extraSanctioned?: string): Promise<string[]> {
     ? [...SANCTIONED_ADDRESSES, extraSanctioned]
     : SANCTIONED_ADDRESSES;
   const hashes = await Promise.all(flagged.map(hashToField));
-  // Pad to the circuit's fixed list size with sentinel values that no real
-  // address hash can collide with (hashToField output is always 31 bytes).
   const fillers = Array.from(
     { length: SANCTIONS_LIST_SIZE - hashes.length },
     (_, i) => '0x' + (BigInt(0xdead0000) + BigInt(i)).toString(16)
@@ -50,11 +58,24 @@ async function buildSanctionsList(extraSanctioned?: string): Promise<string[]> {
   return [...hashes, ...fillers];
 }
 
+/** Real XLM balance (in stroops) of the connected wallet via Horizon. */
+async function fetchBalanceStroops(walletAddress: string): Promise<bigint> {
+  const res = await fetch(`${CONTRACTS.horizonUrl}/accounts/${walletAddress}`);
+  if (!res.ok) throw new Error(`Horizon returned ${res.status}`);
+  const account = await res.json();
+  const native = account.balances?.find(
+    (b: { asset_type: string; balance: string }) => b.asset_type === 'native'
+  );
+  if (!native) throw new Error('No native balance on account');
+  return toStroops(parseFloat(native.balance));
+}
+
 /**
  * ZK Proof & Stellar Integration Service.
- * Proof generation and local verification are REAL (Noir + UltraHonk in the
- * browser). On-chain submission is still simulated until the Soroban verifier
- * contract lands (Phase 3/4).
+ * Proof generation is REAL (Noir + UltraHonk, keccak transcript, in the
+ * browser) and verification is REAL and ON-CHAIN: the zbank_verifier Soroban
+ * contract on testnet verifies both proofs and executes the transfer
+ * atomically — if either proof fails, no funds move.
  */
 export const stellarZkService = {
   /**
@@ -66,7 +87,7 @@ export const stellarZkService = {
   async generateComplianceProof(
     recipientAddress: string,
     onProgress: ProgressCallback,
-    options?: { simulateFailure?: boolean }
+    options?: PaymentOptions
   ): Promise<ProofResult> {
     onProgress('generating', 'Hashing recipient and proving non-membership of sanctions register...');
     const { generateProof, hashToField } = await loadProver();
@@ -95,20 +116,31 @@ export const stellarZkService = {
 
   /**
    * Generates a real zero-knowledge range proof: amount >= 1 stroop and
-   * amount <= balance, with both amount and balance kept private.
+   * amount <= balance, with both amount and balance kept private. The balance
+   * is the connected wallet's real XLM balance from Horizon.
    */
   async generateConfidentialAmountProof(
     amount: number,
-    onProgress: ProgressCallback
+    onProgress: ProgressCallback,
+    options?: PaymentOptions
   ): Promise<ProofResult> {
     onProgress('generating', 'Proving amount is within balance range without revealing values...');
     const { generateProof } = await loadProver();
     const { default: amountCircuit } = await import('../circuits/amount_circuit.json');
 
+    let balance = FALLBACK_BALANCE_STROOPS;
+    if (options?.walletAddress) {
+      try {
+        balance = await fetchBalanceStroops(options.walletAddress);
+      } catch (err) {
+        console.warn('Horizon balance fetch failed, using fallback balance:', err);
+      }
+    }
+
     try {
       const proof = await generateProof(amountCircuit as never, {
         amount: toStroops(amount).toString(),
-        balance: DEMO_BALANCE_STROOPS.toString(),
+        balance: balance.toString(),
         min_amount: '1',
       });
       onProgress('success', 'Amount proven to be within balance range and asset limits.');
@@ -120,45 +152,100 @@ export const stellarZkService = {
   },
 
   /**
-   * Verifies both proofs against their verification keys. Verification is
-   * real but runs locally; submission to the Soroban verifier contract is
-   * simulated until Phase 3/4.
+   * Submits both proofs to the zbank_verifier Soroban contract on testnet.
+   * The contract verifies the UltraHonk proofs on-chain and, only if both
+   * hold, transfers the amount (native XLM) from sender to recipient.
+   * The user signs the transaction in the Freighter popup.
    */
   async verifyOnStellar(
     complianceProof: ProofResult,
     amountProof: ProofResult,
+    payment: { sender: string; recipient: string; amount: number },
     onProgress: ProgressCallback
   ): Promise<{ txHash: string; ledgerIndex: number }> {
-    onProgress('generating', 'Verifying UltraHonk proofs against circuit verification keys...');
-    const { verifyProofLocally } = await loadProver();
-    const [{ default: complianceCircuit }, { default: amountCircuit }] = await Promise.all([
-      import('../circuits/compliance_circuit.json'),
-      import('../circuits/amount_circuit.json'),
-    ]);
+    onProgress('generating', 'Building Soroban transaction for on-chain proof verification...');
 
-    const [complianceOk, amountOk] = await Promise.all([
-      verifyProofLocally(complianceCircuit as never, complianceProof),
-      verifyProofLocally(amountCircuit as never, amountProof),
+    const [{ publicInputsToBytes }, sdk, freighter] = await Promise.all([
+      loadProver(),
+      import('@stellar/stellar-sdk'),
+      import('@stellar/freighter-api'),
     ]);
+    const { Contract, TransactionBuilder, Address, nativeToScVal, BASE_FEE, rpc } = sdk;
 
-    if (!complianceOk || !amountOk) {
-      onProgress('failed', 'Proof verification failed.');
-      throw new Error('Proof verification failed');
+    const server = new rpc.Server(CONTRACTS.sorobanRpcUrl);
+    const account = await server.getAccount(payment.sender);
+
+    const contract = new Contract(CONTRACTS.verifier);
+    const operation = contract.call(
+      'verify_payment',
+      Address.fromString(payment.sender).toScVal(),
+      Address.fromString(payment.recipient).toScVal(),
+      Address.fromString(CONTRACTS.nativeToken).toScVal(),
+      nativeToScVal(toStroops(payment.amount), { type: 'i128' }),
+      nativeToScVal(publicInputsToBytes(complianceProof.publicInputs), { type: 'bytes' }),
+      nativeToScVal(complianceProof.proof, { type: 'bytes' }),
+      nativeToScVal(publicInputsToBytes(amountProof.publicInputs), { type: 'bytes' }),
+      nativeToScVal(amountProof.proof, { type: 'bytes' })
+    );
+
+    const tx = new TransactionBuilder(account, {
+      fee: (Number(BASE_FEE) * 10).toString(),
+      networkPassphrase: CONTRACTS.networkPassphrase,
+    })
+      .addOperation(operation)
+      .setTimeout(120)
+      .build();
+
+    // Simulation attaches the auth entries and resource fees — and is also
+    // where an invalid proof gets rejected before the user signs anything.
+    const prepared = await server.prepareTransaction(tx);
+
+    onProgress('generating', 'Awaiting signature in Freighter...');
+    const signed = await freighter.signTransaction(prepared.toXDR(), {
+      networkPassphrase: CONTRACTS.networkPassphrase,
+      address: payment.sender,
+    });
+    if (signed.error || !signed.signedTxXdr) {
+      onProgress('failed', signed.error?.message || 'Signature rejected in Freighter.');
+      throw new Error(signed.error?.message || 'Transaction signing rejected');
     }
 
-    onProgress(
-      'success',
-      `Proofs verified. VK hashes ${complianceProof.vkHash.slice(0, 10)}… / ${amountProof.vkHash.slice(0, 10)}…`
+    onProgress('generating', 'Submitting to Stellar testnet and verifying proofs on-chain...');
+    const sendResponse = await server.sendTransaction(
+      TransactionBuilder.fromXDR(signed.signedTxXdr, CONTRACTS.networkPassphrase)
     );
-    // Simulated on-chain result — replaced by a real Soroban contract call in Phase 3/4
-    return {
-      txHash: 'st_tx_0x' + Math.random().toString(16).substring(2, 18),
-      ledgerIndex: Math.floor(Math.random() * 1000000) + 61000000,
-    };
+    if (sendResponse.status === 'ERROR') {
+      onProgress('failed', 'Transaction rejected by the network.');
+      throw new Error('Transaction submission failed');
+    }
+
+    // Poll until the transaction lands in a ledger
+    const deadline = Date.now() + 60_000;
+    for (;;) {
+      const result = await server.getTransaction(sendResponse.hash);
+      if (result.status === 'SUCCESS') {
+        onProgress(
+          'success',
+          `Proofs verified on-chain by ${CONTRACTS.verifier.slice(0, 8)}…. Funds transferred.`
+        );
+        return { txHash: sendResponse.hash, ledgerIndex: result.ledger };
+      }
+      if (result.status === 'FAILED') {
+        onProgress('failed', 'On-chain proof verification failed. Transaction reverted — no funds moved.');
+        throw new Error('On-chain verification failed');
+      }
+      if (Date.now() > deadline) {
+        onProgress('failed', 'Timed out waiting for transaction confirmation.');
+        throw new Error('Confirmation timeout');
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
   },
 
   /**
-   * Combined workflow for sending a confidential payment.
+   * Combined workflow for sending a confidential payment: two ZK proofs in
+   * the browser, then one Soroban transaction that verifies both on-chain and
+   * settles the transfer.
    */
   async submitConfidentialPayment(
     recipient: string,
@@ -166,9 +253,18 @@ export const stellarZkService = {
     memo: string,
     currency: string,
     onStepChange: (stepIndex: number, status: 'generating' | 'success' | 'failed', msg?: string) => void,
-    options?: { simulateFailure?: boolean }
+    options?: PaymentOptions
   ): Promise<PaymentTransaction> {
     try {
+      if (!options?.walletAddress) {
+        onStepChange(0, 'failed', 'No wallet connected.');
+        throw new Error('Connect a Freighter wallet before sending');
+      }
+      if (options.network && options.network !== 'testnet') {
+        onStepChange(0, 'failed', 'Switch Freighter to TESTNET — the verifier contract lives there.');
+        throw new Error('Wrong network: switch Freighter to testnet');
+      }
+
       // Step 1: Compliance
       const compProof = await this.generateComplianceProof(
         recipient,
@@ -177,18 +273,23 @@ export const stellarZkService = {
       );
 
       // Step 2: Amount Proof
-      const amtProof = await this.generateConfidentialAmountProof(amount, (status, msg) => {
-        onStepChange(1, status, msg);
-      });
+      const amtProof = await this.generateConfidentialAmountProof(
+        amount,
+        (status, msg) => onStepChange(1, status, msg),
+        options
+      );
 
-      // Step 3: Verification
-      const stellarResult = await this.verifyOnStellar(compProof, amtProof, (status, msg) => {
-        onStepChange(2, status, msg);
-      });
+      // Step 3: On-chain verification + settlement
+      const stellarResult = await this.verifyOnStellar(
+        compProof,
+        amtProof,
+        { sender: options.walletAddress, recipient, amount },
+        (status, msg) => onStepChange(2, status, msg)
+      );
 
       // Assemble final transaction with the real proof artifacts
       const newTx: PaymentTransaction = {
-        id: 'tx_' + Math.floor(Math.random() * 100000000),
+        id: 'tx_' + stellarResult.txHash.slice(0, 8),
         timestamp: new Date().toISOString(),
         type: 'Sent',
         counterparty: recipient,
@@ -212,7 +313,7 @@ export const stellarZkService = {
   },
 
   /**
-   * Simulates toggle of selective disclosure.
+   * Simulates toggle of selective disclosure (real crypto lands in Phase 6).
    */
   async setAuditorAccess(auditorId: string, grant: boolean): Promise<boolean> {
     console.log(`Setting access for ${auditorId} to ${grant}`);

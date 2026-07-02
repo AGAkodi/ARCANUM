@@ -48,6 +48,9 @@ export default function ZkTestPage() {
       try {
         const proof = await generateProof(circuit as never, inputs as never);
         const ok = await verifyProofLocally(circuit as never, proof);
+        // Expose results for e2e checks (browser proof -> on-chain verify)
+        const w = window as unknown as { __zkResults?: Record<string, unknown> };
+        w.__zkResults = { ...w.__zkResults, [`case${i}`]: proof };
         const ms = Math.round(performance.now() - t0);
         if (mustFail) {
           update(i, { status: 'failed', detail: 'Expected constraint failure but proof succeeded', ms });

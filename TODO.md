@@ -55,7 +55,7 @@ Mark items `[x]` as we finish them.
 
 ## Phase 2 — Real ZK Circuits (Noir) ✅ COMPLETE
 
-*Implementation notes (2026-07-01): bb 5.x renamed `bb prove_ultra_honk` → `bb prove` and `bb write_vk_ultra_honk` → `bb write_vk` (UltraHonk is the default scheme). `@noir-lang/backend_barretenberg` is deprecated — the browser backend is `UltraHonkBackend` from `@aztec/bb.js`, pinned to `5.0.0-nightly.20260522` to match the local bb CLI (bb.js 4.4.0 traps with `RuntimeError: unreachable` on beta.22 ACIR). The prover runs single-threaded because multithreading needs SharedArrayBuffer → COOP/COEP headers, which would break cross-origin assets (Google Fonts). First proof in a fresh browser takes ~40 s (one-time SRS download, cached in IndexedDB); subsequent proofs ~0.5 s. Dev harness at `/zk-test` runs all circuits in the browser without the wallet gate.*
+*Implementation notes (2026-07-02, supersedes the 07-01 note): the whole stack is now pinned to **Noir 1.0.0-beta.9 + bb 0.87.0 with the keccak oracle**, because that is the proof format the on-chain verifier crate (rs-soroban-ultrahonk) expects — the newer bb 5.x nightly proofs (458 fields) are incompatible with its 456-field format. Pinned binaries live in `~/.zbank-toolchain/` (see `circuits/README.md`). Browser proving uses `@noir-lang/noir_js@1.0.0-beta.9` + `@aztec/bb.js@0.87.0`; bb.js 0.87's browser bundle breaks under Next's webpack, so `scripts/copy-bb.mjs` (postinstall) serves it verbatim from `public/bb/` and `zkProver.ts` loads it at runtime. Proofs take ~1-2 s in-browser, single-threaded (no SharedArrayBuffer without COOP/COEP headers, which would break Google Fonts). Dev harness at `/zk-test` runs all circuits without the wallet gate.*
 
 ### Immediate Fix First
 
@@ -111,133 +111,70 @@ Mark items `[x]` as we finish them.
 
 ---
 
-## Phase 3 — Soroban Smart Contract 🔴 NOT STARTED
+## Phase 3 — Soroban Smart Contract ✅ COMPLETE
+
+*Implementation notes (2026-07-02): instead of porting verifier internals, `contracts/zbank_verifier` depends on the `ultrahonk_soroban_verifier` crate (git dep pinned to rev `661db07`). One contract holds all three circuit VKs (immutable, set in `__constructor`). `verify_payment` verifies BOTH proofs + executes the transfer atomically in a single transaction — it fits testnet resource limits. Deployed contract: `CAHC6LH4MWQXFSZ7Z4UNY3ZCHGU4III6SKA5YKKXMTIMARYIO72PMCXV` (deployer key alias: `zbank-deployer`).*
 
 ### Environment Setup
 
-- [ ] Confirm Rust installed: `rustc --version`
-- [ ] Add WASM target: `rustup target add wasm32-unknown-unknown`
-- [ ] Install Stellar CLI: `cargo install --locked soroban-cli`
-- [ ] Confirm: `stellar --version`
-- [ ] Clone verifier reference:
-  ```bash
-  git clone https://github.com/yugocabrio/rs-soroban-ultrahonk
-  ```
+- [x] Confirm Rust installed (needed `rustup update` — soroban-sdk 26 requires rustc ≥ 1.91)
+- [x] Add WASM target: `wasm32v1-none` (current Soroban target, not wasm32-unknown-unknown)
+- [x] Install Stellar CLI (`brew install stellar-cli`, v27.0.0)
+- [x] Verifier reference: used as a crate dependency rather than cloned/ported
 
 ### Contract 1 — ZK Payment Verifier (main contract)
-*Does: Receives ZK proof → verifies on-chain → executes transfer if valid → reverts if invalid → emits event with proof hash only*
 
-- [ ] `mkdir contracts && cd contracts`
-- [ ] `stellar contract init zbank_verifier`
-- [ ] Write `contracts/zbank_verifier/src/lib.rs`:
-  - Accept proof: `Bytes` and `public_inputs: Vec<u256>`
-  - Port UltraHonk verification logic from cloned verifier reference
-  - On success: call `token::Client::transfer()` to move funds
-  - On failure: `panic!("proof verification failed")`
-  - Emit event: `env.events().publish(("zbank", "payment"), proof_hash)`
-- [ ] Write contract tests in `src/test.rs` — test with toy circuit proof first, then real proofs
-- [ ] Build:
-  ```bash
-  cd contracts/zbank_verifier
-  cargo build --target wasm32-unknown-unknown --release
-  ```
-- [ ] Fix all build errors
+*Does: Receives ZK proofs → verifies on-chain → executes transfer if valid → reverts if invalid → emits event with proof hash only*
 
-### Contract 2 — Solvency Attestation 🟡 DO IF TIME ALLOWS
+- [x] `contracts/` cargo workspace with `zbank_verifier` member
+- [x] `contracts/zbank_verifier/src/lib.rs`:
+  - `verify_payment(sender, recipient, token, amount, compliance_inputs, compliance_proof, amount_inputs, amount_proof)`
+  - `sender.require_auth()` + both UltraHonk proofs verified via stored VKs
+  - On success: `token::Client::transfer()` moves the funds
+  - On failure: typed `Error` return reverts the invocation — no funds move
+  - Emits `("zbank", "payment")` event with the keccak proof hash only
+- [x] Tests in `src/test.rs` with the real circuit artifacts: happy path (funds move), corrupted proof (typed error, no funds move), solvency attestation, wrong-circuit proof rejected — 4/4 pass
+- [x] Build clean: `stellar contract build` → 23 KB wasm
 
-- [ ] Add `attest_solvency(proof: Bytes, public_inputs: Vec<u256>)` function
-- [ ] On success: store `(timestamp, proof_hash)` in contract storage
-- [ ] Add read function: `get_solvency_attestation() -> (u64, BytesN<32>)`
+### Contract 2 — Solvency Attestation ✅ DONE (same contract)
+
+- [x] `attest_solvency(public_inputs: Bytes, proof: Bytes)` — verifies against the solvency VK
+- [x] On success: stores `SolvencyAttestation { timestamp, ledger, proof_hash }` in contract storage + emits event
+- [x] Read function: `get_solvency_attestation() -> Option<SolvencyAttestation>`
 
 ### Deploy to Stellar Testnet
 
-- [ ] Generate and fund deployer wallet:
-  ```bash
-  stellar keys generate deployer --network testnet
-  stellar keys fund deployer --network testnet
-  ```
-- [ ] Deploy verifier contract:
-  ```bash
-  stellar contract deploy \
-    --wasm target/wasm32-unknown-unknown/release/zbank_verifier.wasm \
-    --source deployer \
-    --network testnet
-  ```
-- [ ] Save returned contract address into `src/config/contracts.ts`:
-  ```typescript
-  export const CONTRACT_ADDRESSES = {
-    verifier: 'C...YOUR_CONTRACT_ADDRESS',
-    network: 'testnet'
-  }
-  ```
-- [ ] Test with toy circuit proof first:
-  ```bash
-  stellar contract invoke \
-    --id YOUR_CONTRACT_ADDRESS \
-    --source deployer \
-    --network testnet \
-    -- verify_payment \
-    --proof <toy_proof_hex> \
-    --public_inputs <public_inputs>
-  ```
-- [ ] Confirm successful verification tx on Stellar testnet explorer
-- [ ] Push contract code and updated `contracts.ts`
+- [x] Deployer wallet generated + friendbot-funded (`stellar keys generate zbank-deployer --network testnet --fund`)
+- [x] Deployed with all three VKs as constructor args
+- [x] Contract address saved in `src/config/contracts.ts` (with native XLM SAC address, RPC/Horizon URLs, explorer helpers)
+- [x] Tested on testnet with real proofs (CLI-generated AND browser-generated):
+  - verify_payment: [06b237bc…](https://stellar.expert/explorer/testnet/tx/06b237bce8a3796229284785d31613ac2e7928d118f2b7fad486cdfdf4451a84) (CLI proofs), [c2573f1d…](https://stellar.expert/explorer/testnet/tx/c2573f1d430f8d4c9fec9a9c3cd501cbc409b7bf1de47dda5f665bbefd71a7f9) (browser proofs)
+  - attest_solvency: [440d3998…](https://stellar.expert/explorer/testnet/tx/440d3998f6a190601b9dabd4544e663db0a5d213d6af592d634a4ba765cf1984)
+- [x] Push contract code and updated `contracts.ts`
 
 ---
 
-## Phase 4 — Wire Frontend to Real Chain 🔴 NOT STARTED
-*All changes in `stellarZkService.ts` unless noted.*
+## Phase 4 — Wire Frontend to Real Chain ✅ COMPLETE
+
+*Implementation notes (2026-07-02): end-to-end verified — proofs generated by the app's browser prover were submitted to the deployed contract and verified on-chain ([c2573f1d…](https://stellar.expert/explorer/testnet/tx/c2573f1d430f8d4c9fec9a9c3cd501cbc409b7bf1de47dda5f665bbefd71a7f9)). The only step not exercised headlessly is the Freighter signing popup itself (needs the extension) — same code path, CLI signature swapped for Freighter's. Transfers are native XLM via the SAC; amount is visible in the transfer event on-chain until the Phase 5 shielded pool. The proof is keccak (non-ZK-mode) UltraHonk — fine for the demo, worth revisiting for stronger privacy later.*
 
 ### Proof Generation (replace all `setTimeout` stubs)
 
-- [ ] Step 1 — Real compliance proof:
-  - Hash recipient address with Poseidon
-  - Call `generateProof(complianceCircuit, { recipient_hash, sanctions_root, ... })`
-  - Return real proof bytes
-- [ ] Step 2 — Real amount proof:
-  - Fetch real wallet balance from Horizon API
-  - Call `generateProof(amountCircuit, { amount, balance, min_amount: "1" })`
-  - Return real proof bytes
+- [x] Step 1 — Real compliance proof (recipient hashed with SHA-256→field; sanctions list as public inputs)
+- [x] Step 2 — Real amount proof: real wallet balance fetched from Horizon (falls back to demo constant if no wallet/Horizon error)
 
 ### Stellar Transaction
 
-- [ ] Step 3 — Build Soroban transaction:
-  ```typescript
-  import { Contract, SorobanRpc, TransactionBuilder, Networks } from '@stellar/stellar-sdk';
-  const contract = new Contract(CONTRACT_ADDRESSES.verifier);
-  const operation = contract.call(
-    'verify_payment',
-    xdr.ScVal.scvBytes(complianceProofBytes),
-    xdr.ScVal.scvBytes(amountProofBytes)
-  );
-  ```
-- [ ] Step 4 — Freighter signing:
-  ```typescript
-  import { signTransaction } from '@stellar/freighter-api';
-  const signedTx = await signTransaction(tx.toXDR(), { network: 'TESTNET' });
-  ```
-- [ ] Step 5 — Submit to network:
-  ```typescript
-  const server = new SorobanRpc.Server('https://soroban-testnet.stellar.org');
-  const result = await server.sendTransaction(
-    TransactionBuilder.fromXDR(signedTx, Networks.TESTNET)
-  );
-  ```
-- [ ] Step 6 — Return real result to UI:
-  - Return real `txHash` and `ledgerIndex`
-  - Link tx hash to `https://stellar.expert/explorer/testnet/tx/{txHash}`
-  - Update proof generation flow stages with real status
+- [x] Step 3 — Build Soroban transaction: `Contract.call('verify_payment', …)` with sender/recipient/token/amount + both proofs and public inputs; `rpc.Server.prepareTransaction` simulates (an invalid proof is rejected here, before the user signs)
+- [x] Step 4 — Freighter signing: `signTransaction(prepared.toXDR(), { networkPassphrase, address })`; rejects surface as a failed step (needs the wrong-network guard: submission refuses unless Freighter is on TESTNET)
+- [x] Step 5 — Submit via `rpc.Server.sendTransaction` + poll `getTransaction` until SUCCESS/FAILED (60 s deadline)
+- [x] Step 6 — Real `txHash` + `ledgerIndex` returned to the UI; tx hash links to stellar.expert; `ProofGenerationFlow` stages driven by real prover/chain progress
 
 ### Frontend Updates
 
-- [ ] Update [ExplorerComparison.tsx](file:///c:/Users/akodi/OneDrive/Desktop/ZBank/src/components/ExplorerComparison.tsx) — pull real tx data from Horizon API for public ledger view
-- [ ] Update Dashboard transaction table — show real on-chain confirmation status
-- [ ] Quick win: wire live XLM balance in Treasury from Horizon API:
-  ```typescript
-  const server = new Horizon.Server('https://horizon-testnet.stellar.org');
-  const account = await server.loadAccount(publicKey);
-  const balance = account.balances.find(b => b.asset_type === 'native')?.balance;
-  ```
+- [x] `ExplorerComparison.tsx` — public ledger panel pulls the real tx record from Horizon (ledger #, fee charged, on-chain timestamp, live-confirmed state, stellar.expert link)
+- [x] Dashboard transaction table — real transactions get a "Testnet ↗" confirmation link to stellar.expert
+- [x] Quick win — Treasury shows the connected wallet's live testnet XLM balance via Horizon (blurred, revealable), falls back to mock when disconnected
 
 ---
 
@@ -266,8 +203,8 @@ Mark items `[x]` as we finish them.
 ## Phase 7 — Live Treasury Data 🟡 PARTIAL — DO EARLY
 *The balance fetch is a 30-minute task — do this during Phase 4*
 
-- [ ] Fetch real XLM balance from Horizon API on wallet connect
-- [ ] Display real (blurred) balance in Treasury view
+- [x] Fetch real XLM balance from Horizon API on wallet connect (done in Phase 4, `src/lib/useHorizon.ts`)
+- [x] Display real (blurred) balance in Treasury view (done in Phase 4)
 - [ ] Derive volume chart from real `payments[]` state
 - [ ] When solvency proof stamped on-chain (Phase 3), read proof hash back and display in Treasury
 - [ ] Add "Generate Solvency Proof" button — runs Noir circuit, submits to contract

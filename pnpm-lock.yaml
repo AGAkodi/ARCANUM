@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@aztec/bb.js':
-        specifier: 5.0.0-nightly.20260522
-        version: 5.0.0-nightly.20260522
+        specifier: 0.87.0
+        version: 0.87.0
       '@noir-lang/noir_js':
-        specifier: 1.0.0-beta.22
-        version: 1.0.0-beta.22
+        specifier: 1.0.0-beta.9
+        version: 1.0.0-beta.9
       '@stellar/freighter-api':
         specifier: ^6.0.1
         version: 6.0.1
@@ -51,8 +51,8 @@ importers:
 
 packages:
 
-  '@aztec/bb.js@5.0.0-nightly.20260522':
-    resolution: {integrity: sha512-3QCyPPQrPaFKgXcHw+7Mk+ScGJiMoeOtc6FpQFPTwTVbyFj9FGFdB6bceS6ulyNsmM6JfFmJRcbGerTAjzfbhw==}
+  '@aztec/bb.js@0.87.0':
+    resolution: {integrity: sha512-1tGxrJc/or9p4zwP7yvSLHU0z0N/DQGLfIeTYRdlQQPBMcnKX51rMI0PJ07/zZj0XxwHVFlqtV+PqvFBszIPwA==}
     hasBin: true
 
   '@emnapi/runtime@1.11.1':
@@ -303,17 +303,17 @@ packages:
     resolution: {integrity: sha512-IYqDGiTXab6FniAgnSdZwgWbomxpy9FtYvLKs7wCUs2a8RkITG+DFGO1DM9cr+E3/RgADRpFjrKVaJ1z6sjtEg==}
     engines: {node: '>= 20.19.0'}
 
-  '@noir-lang/acvm_js@1.0.0-beta.22':
-    resolution: {integrity: sha512-2xXfSKrnskUNmPiG/Kj6yvWi1E6wJBl/1ZsmzVaHEEyJsUBf15xaSRBZR7X1361whUR2vqyG80ck2huLZPb5bA==}
+  '@noir-lang/acvm_js@1.0.0-beta.9':
+    resolution: {integrity: sha512-cWDKgOkDCj6USfSITB0IM/o3ThndLOsrH6pDptaB6D6wHpSxTOpl/pKP8m1KHXGLVsU0BjIImZ2RrWB4F3a2Pw==}
 
-  '@noir-lang/noir_js@1.0.0-beta.22':
-    resolution: {integrity: sha512-Ts+QI2fN2PsrVjx38CszFSR0TyWpip9TgJ6HM17DIK05Jku4TSKtHMIjrE6lRii4Y+JV0rn70v+TrunJmt/X4w==}
+  '@noir-lang/noir_js@1.0.0-beta.9':
+    resolution: {integrity: sha512-UDHvQBvWiAbo70+taFQyUgBysVxgxuMkEXxtQUPD8v9sbHp4J5ecGRrtp/1eq15D0zpVc34Vfo8zy2CWndfbaA==}
 
-  '@noir-lang/noirc_abi@1.0.0-beta.22':
-    resolution: {integrity: sha512-vpZtWb946eb4ZxERxY32I4Fv62SAAjhAyJpb2YzWYvnDVTyFVIvr/MSVunrM1osUP35nnRPRGuXVTWy4sBQkIg==}
+  '@noir-lang/noirc_abi@1.0.0-beta.9':
+    resolution: {integrity: sha512-JOBLJBZqE6skGztI5xy4GW5WB40YGADt0mU/vf1QAuVY9yArRU3oAJIjuXi4Mo1fvE1TSx/4XPZr7Rocl6Effg==}
 
-  '@noir-lang/types@1.0.0-beta.22':
-    resolution: {integrity: sha512-PXD8cmvMT4wybDe1pUPwv2Uz1FYh9B/hdXrY5eOMf1elNVxomj2tHDDYoKI/zNDrJ1JzTL0xhbAX1vBTMMFvBw==}
+  '@noir-lang/types@1.0.0-beta.9':
+    resolution: {integrity: sha512-2KB4uSUUHjDZzrUY8CIRyaIS4Q9d0s1T9bwabw1rysSBICDkgKOdVKkG0szaCFbmeDNQ3kqanPjqBj7IEEHD7A==}
 
   '@oxlint/binding-android-arm-eabi@1.72.0':
     resolution: {integrity: sha512-zhCmvn+1Mj3UchAc/90i99S0t7jJUsHmFVSPg4UWrjO8b8eaSGwscgO6QAUtvHBstkjQwBttQNswEnAF1mIQdA==}
@@ -562,6 +562,9 @@ packages:
   feaxios@0.0.23:
     resolution: {integrity: sha512-eghR0A21fvbkcQBgZuMfQhrXxJzC0GNUGC9fXhBge33D+mFDTwl0aJ35zoQQn575BhyjQitRc5N4f+L4cP708g==}
 
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
+
   follow-redirects@1.16.0:
     resolution: {integrity: sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==}
     engines: {node: '>=4.0'}
@@ -605,9 +608,6 @@ packages:
   https-proxy-agent@5.0.1:
     resolution: {integrity: sha512-dFcAjpTQFgoLMzC2VwU+C/CbS7uRL0lWmxDITmqm7C+7F0Odmj6s9l6alZc6AELXhrnggM2CeWSXHGOdX2YtwA==}
     engines: {node: '>= 6'}
-
-  idb-keyval@6.2.6:
-    resolution: {integrity: sha512-FY64UEhw+5liMzMQ1R9Mw6AF0+wyBrg1CIA1z4CjI/EvT5ty/SvQcWZgd8s9sgaNhX10Y8UzScTh89tEAls5nA==}
 
   ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
@@ -764,14 +764,17 @@ packages:
 
 snapshots:
 
-  '@aztec/bb.js@5.0.0-nightly.20260522':
+  '@aztec/bb.js@0.87.0':
     dependencies:
       comlink: 4.4.2
       commander: 12.1.0
-      idb-keyval: 6.2.6
+      debug: 4.4.3
+      fflate: 0.8.3
       msgpackr: 1.12.1
       pako: 2.2.0
       tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
 
   '@emnapi/runtime@1.11.1':
     dependencies:
@@ -923,20 +926,20 @@ snapshots:
 
   '@noble/hashes@2.2.0': {}
 
-  '@noir-lang/acvm_js@1.0.0-beta.22': {}
+  '@noir-lang/acvm_js@1.0.0-beta.9': {}
 
-  '@noir-lang/noir_js@1.0.0-beta.22':
+  '@noir-lang/noir_js@1.0.0-beta.9':
     dependencies:
-      '@noir-lang/acvm_js': 1.0.0-beta.22
-      '@noir-lang/noirc_abi': 1.0.0-beta.22
-      '@noir-lang/types': 1.0.0-beta.22
+      '@noir-lang/acvm_js': 1.0.0-beta.9
+      '@noir-lang/noirc_abi': 1.0.0-beta.9
+      '@noir-lang/types': 1.0.0-beta.9
       pako: 2.2.0
 
-  '@noir-lang/noirc_abi@1.0.0-beta.22':
+  '@noir-lang/noirc_abi@1.0.0-beta.9':
     dependencies:
-      '@noir-lang/types': 1.0.0-beta.22
+      '@noir-lang/types': 1.0.0-beta.9
 
-  '@noir-lang/types@1.0.0-beta.22': {}
+  '@noir-lang/types@1.0.0-beta.9': {}
 
   '@oxlint/binding-android-arm-eabi@1.72.0':
     optional: true
@@ -1126,6 +1129,8 @@ snapshots:
     dependencies:
       is-retry-allowed: 3.0.0
 
+  fflate@0.8.3: {}
+
   follow-redirects@1.16.0: {}
 
   form-data@4.0.6:
@@ -1174,8 +1179,6 @@ snapshots:
       debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
-
-  idb-keyval@6.2.6: {}
 
   ieee754@1.2.1: {}
 

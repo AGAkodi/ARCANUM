@@ -1,0 +1,21 @@
+[workspace]
+members = ["zbank_verifier"]
+resolver = "2"
+
+[workspace.dependencies]
+soroban-sdk = { version = "=26.0.1", default-features = false }
+ultrahonk-soroban-verifier = { git = "https://github.com/yugocabrio/rs-soroban-ultrahonk", rev = "661db07200f890b1bd9a7349ed787c70a706dd12", package = "ultrahonk_soroban_verifier" }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+overflow-checks = true
+debug = 0
+debug-assertions = false
+
+[profile.release-with-logs]
+inherits = "release"
+debug-assertions = true

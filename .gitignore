@@ -18,6 +18,13 @@ dist-ssr
 
 memory/*
 
+# bb.js browser bundle, copied from node_modules on postinstall
+public/bb
+
+# Rust build artifacts (Soroban contracts)
+contracts/target
+contracts/**/test_snapshots
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

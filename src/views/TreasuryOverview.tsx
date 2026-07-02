@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { mockTreasury, mockVolumeHistory } from '../mocks/treasury';
+import { useSession } from '../context/SessionContext';
+import { useXlmBalance } from '../lib/useHorizon';
 import { VerifiedBadge } from '../components/VerifiedBadge';
 import { RedactedValue } from '../components/RedactedValue';
 import { ComingSoonBadge } from '../components/ComingSoonBadge';
@@ -17,6 +19,9 @@ import {
 } from 'lucide-react';
 
 export const TreasuryOverview: React.FC = () => {
+  const { walletAddress } = useSession();
+  // Live testnet XLM balance for the connected wallet (Horizon)
+  const liveBalance = useXlmBalance(walletAddress);
   // Find max volume to calculate percentage heights for chart columns
   const maxVolume = Math.max(...mockVolumeHistory.map(d => d.paymentCount));
 
@@ -44,14 +49,20 @@ export const TreasuryOverview: React.FC = () => {
               </span>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem', marginTop: '0.5rem' }}>
                 <span className="card-val" style={{ fontSize: '2.5rem', margin: 0 }}>
-                  <RedactedValue 
-                    value={mockTreasury.totalAssetsRedacted} 
-                    type="blur" 
-                    badgeText="Assets Shielded" 
-                    allowReveal={true} 
+                  <RedactedValue
+                    value={
+                      liveBalance
+                        ? `${parseFloat(liveBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })} XLM`
+                        : mockTreasury.totalAssetsRedacted
+                    }
+                    type="blur"
+                    badgeText="Assets Shielded"
+                    allowReveal={true}
                   />
                 </span>
-                <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>USDX Pool</span>
+                <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
+                  {liveBalance ? 'Stellar Testnet · live' : 'USDX Pool'}
+                </span>
               </div>
             </div>
           </div>
