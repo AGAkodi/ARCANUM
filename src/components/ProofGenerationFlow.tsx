@@ -53,7 +53,7 @@ export const ProofGenerationFlow: React.FC<ProofGenerationFlowProps> = ({
     {
       id: 2,
       label: 'Verifying on Stellar',
-      subtext: 'Both proofs verified by the zbank_verifier Soroban contract before funds move',
+      subtext: 'Both proofs verified by the ARCANUM Verifier Soroban contract before funds move',
       activeMessage: 'Invoking Stellar Soroban verifier smart contract on testnet...',
       successMessage: 'Proofs verified on-chain. Transfer settled in ledger.'
     }

@@ -223,9 +223,8 @@ Mark items `[x]` as we finish them.
 
 ## Phase 9 — Submission Requirements 🔴 NOT STARTED
 *Start README now, finish video last*
-
 - [ ] README.md — write this now, update as things complete:
-  - What ZBank is and what problem it solves
+  - What ARCANUM is and what problem it solves
   - What ZK is doing (load-bearing, not just named in the README)
   - Tech stack: Noir, Barretenberg, Soroban, Stellar, Next.js, Freighter
   - Clear table: Real vs Simulated features

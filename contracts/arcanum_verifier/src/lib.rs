@@ -51,12 +51,12 @@ pub enum Error {
     SolvencyProofInvalid = 7,
 }
 
-const EVT: Symbol = symbol_short!("zbank");
+const EVT: Symbol = symbol_short!("arcanum");
 
 #[contract]
-pub struct ZBankVerifier;
+pub struct ArcanumVerifier;
 
-impl ZBankVerifier {
+impl ArcanumVerifier {
     fn store_vk(env: &Env, key: DataKey, vk_bytes: &Bytes) -> Result<(), Error> {
         UltraHonkVerifier::new(env, vk_bytes).map_err(|e| match e {
             VkLoadError::WrongLength | VkLoadError::InvalidParameters => Error::VkInvalid,
@@ -95,7 +95,7 @@ impl ZBankVerifier {
 }
 
 #[contractimpl]
-impl ZBankVerifier {
+impl ArcanumVerifier {
     /// Set the three circuit VKs once at deploy time.
     pub fn __constructor(
         env: Env,
@@ -122,7 +122,7 @@ impl ZBankVerifier {
     /// Verifies the compliance proof (recipient not sanctioned) and the amount
     /// range proof on-chain. Only if BOTH hold does the token transfer
     /// execute; any failure reverts the whole invocation and no funds move.
-    /// Emits a `("zbank","payment")` event carrying only the proof hash.
+    /// Emits a `("arcanum","payment")` event carrying only the proof hash.
     #[allow(clippy::too_many_arguments)]
     pub fn verify_payment(
         env: Env,

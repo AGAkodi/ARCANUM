@@ -7,7 +7,7 @@
  * bb 0.87.0 (keccak oracle).
  */
 export const CONTRACTS = {
-  /** zbank_verifier contract id */
+  /** ARCANUM Verifier contract id */
   verifier: 'CAHC6LH4MWQXFSZ7Z4UNY3ZCHGU4III6SKA5YKKXMTIMARYIO72PMCXV',
   /** Native XLM Stellar Asset Contract on testnet */
   nativeToken: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC',

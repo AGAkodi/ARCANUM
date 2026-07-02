@@ -1,5 +1,5 @@
 [workspace]
-members = ["zbank_verifier"]
+members = ["arcanum_verifier"]
 resolver = "2"
 
 [workspace.dependencies]

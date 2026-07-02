@@ -19,7 +19,7 @@ fn load(env: &Env, circuit: &str, file: &str) -> Bytes {
 
 struct Setup<'a> {
     env: Env,
-    client: ZBankVerifierClient<'a>,
+    client: ArcanumVerifierClient<'a>,
 }
 
 fn setup() -> Setup<'static> {
@@ -34,10 +34,10 @@ fn setup() -> Setup<'static> {
     let vk_solvency = load(&env, "solvency_circuit", "vk");
 
     let contract_id = env.register(
-        ZBankVerifier,
+        ArcanumVerifier,
         (vk_compliance, vk_amount, vk_solvency),
     );
-    let client = ZBankVerifierClient::new(&env, &contract_id);
+    let client = ArcanumVerifierClient::new(&env, &contract_id);
     Setup { env, client }
 }
 

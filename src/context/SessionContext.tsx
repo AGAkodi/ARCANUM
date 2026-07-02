@@ -78,7 +78,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     try {
-      const savedPayments = localStorage.getItem(`zbank_payments_${walletAddress}`);
+      const savedPayments = localStorage.getItem(`arcanum_payments_${walletAddress}`);
       if (savedPayments) {
         const parsed = JSON.parse(savedPayments);
         setPayments(parsed);
@@ -99,7 +99,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     try {
-      const savedAuditors = localStorage.getItem(`zbank_disclosure_${walletAddress}`);
+      const savedAuditors = localStorage.getItem(`arcanum_disclosure_${walletAddress}`);
       if (savedAuditors) {
         const parsed = JSON.parse(savedAuditors);
         setAuditors(parsed);
@@ -118,7 +118,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!walletAddress || lastLoadedAddressRef.current !== walletAddress) return;
     try {
       localStorage.setItem(
-        `zbank_payments_${walletAddress}`,
+        `arcanum_payments_${walletAddress}`,
         JSON.stringify(payments)
       );
     } catch (e) {
@@ -131,7 +131,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!walletAddress || lastLoadedAddressRef.current !== walletAddress) return;
     try {
       localStorage.setItem(
-        `zbank_disclosure_${walletAddress}`,
+        `arcanum_disclosure_${walletAddress}`,
         JSON.stringify(auditors)
       );
     } catch (e) {

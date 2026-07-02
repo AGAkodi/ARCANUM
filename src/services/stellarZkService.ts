@@ -73,7 +73,7 @@ async function fetchBalanceStroops(walletAddress: string): Promise<bigint> {
 /**
  * ZK Proof & Stellar Integration Service.
  * Proof generation is REAL (Noir + UltraHonk, keccak transcript, in the
- * browser) and verification is REAL and ON-CHAIN: the zbank_verifier Soroban
+ * browser) and verification is REAL and ON-CHAIN: the ARCANUM Verifier Soroban
  * contract on testnet verifies both proofs and executes the transfer
  * atomically — if either proof fails, no funds move.
  */
@@ -152,7 +152,7 @@ export const stellarZkService = {
   },
 
   /**
-   * Submits both proofs to the zbank_verifier Soroban contract on testnet.
+   * Submits both proofs to the ARCANUM Verifier Soroban contract on testnet.
    * The contract verifies the UltraHonk proofs on-chain and, only if both
    * hold, transfers the amount (native XLM) from sender to recipient.
    * The user signs the transaction in the Freighter popup.

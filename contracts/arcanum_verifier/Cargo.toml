@@ -1,5 +1,5 @@
 [package]
-name = "zbank_verifier"
+name = "arcanum_verifier"
 version = "0.1.0"
 edition = "2021"
 publish = false
