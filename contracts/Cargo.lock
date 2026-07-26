@@ -39,6 +39,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "arcanum_pool"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+ "ultrahonk_soroban_verifier",
+]
+
+[[package]]
 name = "arcanum_verifier"
 version = "0.1.0"
 dependencies = [

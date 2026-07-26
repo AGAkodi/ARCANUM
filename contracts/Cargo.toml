@@ -1,5 +1,5 @@
 [workspace]
-members = ["arcanum_verifier"]
+members = ["arcanum_verifier", "arcanum_pool"]
 resolver = "2"
 
 [workspace.dependencies]
