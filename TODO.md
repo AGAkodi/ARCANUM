@@ -81,11 +81,12 @@ Withdraw:  Pool releases funds to recipient wallet (visible but amount is separa
 > currently-working (reviewer-praised) verify_payment demo isn't broken beforehand.
 
 - [x] Update `stellarZkService.ts` — pool methods added (deposit, shielded_transfer, withdraw, get_shielded_balance), all guarded by `requirePool()`
-- [ ] Update `SendPayment` flow — call `shieldedTransfer()` instead of `verifyOnStellar()` when `isPoolDeployed()` (gate behind deploy)
-- [ ] Add "Deposit to Pool" button in Treasury view — funds institution's pool balance before they can send
-- [ ] Add "Withdraw from Pool" button in Treasury view
-- [ ] Update Treasury balance display — show `getShieldedBalance()` when pool is deployed
-- [ ] Test full end-to-end: deposit → send shielded payment → confirm no amount in ledger event → withdraw (needs deploy)
+- [x] Update `SendPayment` flow — routes through `shieldedTransfer()` when `isPoolDeployed()` and the sender has enough shielded balance; falls back to `verifyOnStellar()` otherwise so the demo never breaks
+- [x] Add "Deposit to Pool" button in Treasury view — `ShieldedPoolPanel` component
+- [x] Add "Withdraw from Pool" button in Treasury view — same panel
+- [x] Update Treasury balance display — panel shows `getShieldedBalance()` live
+- [x] Contract-level end-to-end verified on testnet (deposit→shielded_transfer→withdraw, no amount on ledger)
+- [ ] Interactive UI end-to-end (click deposit → send → withdraw signing in Freighter) — needs a connected Freighter wallet; app compiles + lints clean, panel gated by `isPoolDeployed()`
 
 ---
 

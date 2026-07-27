@@ -7,6 +7,7 @@ import { useXlmBalance } from '../lib/useHorizon';
 import { VerifiedBadge } from '../components/VerifiedBadge';
 import { RedactedValue } from '../components/RedactedValue';
 import { ComingSoonBadge } from '../components/ComingSoonBadge';
+import { ShieldedPoolPanel } from '../components/ShieldedPoolPanel';
 import { CONTRACTS } from '../config/contracts';
 import { 
   Briefcase, 
@@ -448,6 +449,9 @@ export const TreasuryOverview: React.FC = () => {
         </div>
 
       </div>
+
+      {/* Shielded pool — live deposit / withdraw / balance (Phase 5) */}
+      <ShieldedPoolPanel />
 
       {/* Advanced Modules Section with Coming Soon Shells */}
       <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '8px' }}>

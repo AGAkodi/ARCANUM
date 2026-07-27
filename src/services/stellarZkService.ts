@@ -1,6 +1,6 @@
 import type { PaymentTransaction } from '../mocks/payments';
 import type { ProofResult } from '../lib/zkProver';
-import { CONTRACTS } from '../config/contracts';
+import { CONTRACTS, isPoolDeployed } from '../config/contracts';
 
 export interface ProofGenerationStep {
   label: string;
@@ -481,13 +481,31 @@ export const stellarZkService = {
         options
       );
 
-      // Step 3: On-chain verification + settlement
-      const stellarResult = await this.verifyOnStellar(
-        compProof,
-        amtProof,
-        { sender: options.walletAddress, recipient, amount },
-        (status, msg) => onStepChange(2, status, msg)
-      );
+      // Step 3: On-chain verification + settlement.
+      // If the shielded pool is deployed AND the sender has enough internal
+      // balance, route through it so no amount touches the ledger. Otherwise
+      // fall back to the verified (but visible) transfer so the flow never
+      // breaks for a sender who hasn't deposited yet.
+      const sender = options.walletAddress;
+      let routedThroughPool = false;
+      if (isPoolDeployed()) {
+        const shielded = await this.getShieldedBalance(sender).catch(() => 0);
+        routedThroughPool = shielded >= amount;
+      }
+
+      const stellarResult = routedThroughPool
+        ? await this.shieldedTransfer(
+            compProof,
+            amtProof,
+            { sender, recipient, amount },
+            (status, msg) => onStepChange(2, status, msg)
+          )
+        : await this.verifyOnStellar(
+            compProof,
+            amtProof,
+            { sender, recipient, amount },
+            (status, msg) => onStepChange(2, status, msg)
+          );
 
       // Assemble final transaction with the real proof artifacts
       const newTx: PaymentTransaction = {
@@ -504,7 +522,7 @@ export const stellarZkService = {
         zkProofHash: compProof.proofHex.slice(0, 34),
         stellarTxHash: stellarResult.txHash,
         isPrivate: true,
-        memo: memo || 'Institutional transfer'
+        memo: memo || (routedThroughPool ? 'Shielded pool transfer' : 'Institutional transfer')
       };
 
       return newTx;
