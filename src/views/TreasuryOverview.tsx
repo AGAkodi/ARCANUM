@@ -475,18 +475,18 @@ export const TreasuryOverview: React.FC = () => {
           </div>
         </div>
 
-        {/* Module 2: Private Cross-Border Payroll */}
+        {/* Module 2: Private Cross-Border Payroll — real circuit, integration pending */}
         <div className="coming-soon-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <Users size={18} style={{ color: 'var(--color-text-secondary)' }} />
-            <ComingSoonBadge />
+            <ComingSoonBadge label="Circuit Ready" />
           </div>
           <div>
             <h3 className="coming-soon-title">Private Batch Payroll</h3>
-            <p className="coming-soon-desc">Disburse worker salaries in bulk without revealing compensation sizes.</p>
+            <p className="coming-soon-desc">Disburse worker salaries in bulk without revealing compensation sizes. Proves the pool covers the run and every recipient is approved — salaries and identities stay private.</p>
           </div>
           <div className="coming-soon-skeleton-input">
-            <span>CSV Upload: 142 records • Status: Verifying</span>
+            <span>ZK circuit: nargo test 3/3 • UltraHonk proof verified (14,592 B)</span>
           </div>
         </div>
 

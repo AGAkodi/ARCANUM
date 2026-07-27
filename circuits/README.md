@@ -28,6 +28,7 @@ curl -sL https://github.com/AztecProtocol/aztec-packages/releases/download/v0.87
 | `compliance_circuit` | Recipient is NOT on the sanctions list | `recipient_hash` | `sanctions_list[10]` |
 | `amount_circuit` | `amount >= min_amount && amount <= balance` | `amount`, `balance` | `min_amount` |
 | `solvency_circuit` | `total_assets > total_liabilities` | `total_assets`, `total_liabilities` | — |
+| `payroll_circuit` | pool covers payroll + floor, and every recipient is approved | `salaries[4]`, `employee_hashes[4]`, `pool_balance` | `approved_employees[10]`, `min_balance_after` |
 | `toy_circuit` | `age >= min_age` (hello-world example) | `age` | `min_age` |
 
 ## Build, prove, verify

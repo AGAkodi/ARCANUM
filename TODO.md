@@ -14,8 +14,8 @@ Direct answer to each point in the Stellar team's review:
 |---|---|---|
 | Confirmed working: cargo 4/4 (incl. corrupted-proof + VK-mismatch), nargo 3/3, full bb.js→Freighter→testnet pipeline, Real-vs-Simulated table | Preserved untouched | ✅ locked |
 | "build that Phase 5 pool contract so no plaintext transfer touches the chain" | `arcanum_pool` contract: `shielded_transfer` moves internal balances only, emits proof hash, **no SEP-41 transfer event** — 6/6 tests incl. one asserting the ledger is untouched | 🟡 **contract done**, deploy + frontend pending |
-| "add one 'Coming Soon' module with a real circuit to show the pattern generalizes" | Payroll circuit (Phase 5b) | ⬜ not started |
-| "pin a setup script for nargo beta.9 + bb 0.87.0 … without toolchain skew" | Phase 5c script → installs to `~/.zbank-toolchain/` | ⬜ not started — **skew is live on this machine** (see note) |
+| "add one 'Coming Soon' module with a real circuit to show the pattern generalizes" | `payroll_circuit`: proves pool covers payroll + every recipient approved, salaries/identities private — nargo test 3/3, proof verifies (14,592 B), UI badge → "Circuit Ready" | ✅ **done** |
+| "pin a setup script for nargo beta.9 + bb 0.87.0 … without toolchain skew" | `scripts/setup-toolchain.sh` → installs pinned binaries to `~/.zbank-toolchain/`, verified beta.9 / bb 0.87.0 resolve | ✅ **done** (clean-machine test pending) |
 | "worth bringing to the Stellar Community Fund" | SCF application (Phase 7) | ⬜ not started |
 
 > **Session corrections (2026-07):**
@@ -111,19 +111,25 @@ fn main(
 }
 ```
 
-- [ ] `nargo new payroll_circuit` inside `circuits/`
-- [ ] Write circuit in `src/main.nr`
-- [ ] Write passing `Prover.toml` — sufficient balance, all employees on list
-- [ ] Write failing `Prover.toml` — insufficient balance (should fail assert)
-- [ ] `nargo check`
-- [ ] `nargo execute witness`
-- [ ] `bb prove_ultra_honk -b ./target/payroll_circuit.json -w ./target/witness.gz -o ./target/proof`
-- [ ] `bb write_vk_ultra_honk -b ./target/payroll_circuit.json -o ./target/vk`
-- [ ] `nargo test` — confirm all tests pass
-- [ ] `git add -f circuits/payroll_circuit/target/` and push
-- [ ] Add compiled JSON to `src/circuits/payroll_circuit.json`
-- [ ] Document circuit in `circuits/README.md`
-- [ ] Update "Private Payroll" card badge in the UI from "Simulated" to "Circuit Ready — Integration Coming"
+> Built with the codebase's public-list membership style (like `compliance_circuit`),
+> not Merkle — consistent with the repo and robust on the pinned bb 0.87 toolchain.
+> Privacy model matches the sketch: only `approved_employees` + `min_balance_after`
+> are public; salaries, identities, and `pool_balance` stay private. Merkle root over
+> the approved set is the scale-up path for larger employee counts.
+
+- [x] Create `circuits/payroll_circuit` (Nargo.toml + `src/main.nr`)
+- [x] Write circuit in `src/main.nr` — sums hidden salaries, asserts `pool_balance >= total + min_balance_after`, asserts every recipient on the approved list
+- [x] Write passing `Prover.toml` — sufficient balance, all employees on list
+- [x] Failing cases covered by `#[test(should_fail)]` (insufficient balance + unapproved employee) instead of a second Prover.toml — cleaner and runs under `nargo test`
+- [x] `nargo execute` (compile + witness) with pinned nargo beta.9
+- [x] `bb prove --scheme ultra_honk --oracle_hash keccak …` (bb 0.87 syntax, NOT the old `prove_ultra_honk`) → proof = **14,592 B** ✓
+- [x] `bb write_vk --scheme ultra_honk --oracle_hash keccak …` → vk = 1,760 B
+- [x] `bb verify` round-trips: **Proof verified successfully**
+- [x] `nargo test` — **3/3 pass** (valid, insufficient-balance fails, unapproved fails)
+- [x] `git add -f circuits/payroll_circuit/target/` (push pending)
+- [x] Add compiled JSON to `src/circuits/payroll_circuit.json`
+- [x] Document circuit in `circuits/README.md`
+- [x] Update payroll card badge in the UI from "Simulated" to "Circuit Ready" (Treasury "Private Batch Payroll" module)
 
 ---
 
@@ -139,7 +145,7 @@ The Stellar review said: "Pin a setup script for nargo beta.9 + bb 0.87.0 so oth
 > default. The script below installs there via release tarballs and invokes the pinned
 > paths explicitly — matching how the project actually works.
 
-- [ ] Create `scripts/setup-toolchain.sh`:
+- [x] Create `scripts/setup-toolchain.sh` (idempotent: verifies pinned binaries, only downloads if missing/wrong)
 
 ```bash
 #!/usr/bin/env bash
@@ -183,10 +189,10 @@ echo "     --output_path target --output_format bytes_and_fields"
 > and `--output_format bytes_and_fields` are mandatory — without `--oracle_hash keccak`
 > the proof uses a poseidon transcript and the Soroban verifier rejects it.
 
-- [ ] `chmod +x scripts/setup-toolchain.sh`
-- [ ] Verify pinned versions print `1.0.0-beta.9` and `0.87.0` (NOT the PATH beta.22 / bb 5.0)
-- [ ] Confirm exact `bb prove` flags against `circuits/README.md` (scheme/oracle_hash must match the verifier crate's format)
-- [ ] Test on a clean Mac environment
+- [x] `chmod +x scripts/setup-toolchain.sh`
+- [x] Verify pinned versions print `1.0.0-beta.9` and `0.87.0` (NOT the PATH beta.22 / bb 5.0) — confirmed on this machine
+- [x] Confirm exact `bb prove` flags against `circuits/README.md` (scheme/oracle_hash must match the verifier crate's format)
+- [ ] Test on a clean Mac environment (needs a machine without the toolchain pre-installed)
 - [ ] Push to repo
 
 ---
