@@ -6,6 +6,25 @@ Mark items [x] as we finish them.
 
 ---
 
+## Feedback response scorecard
+
+Direct answer to each point in the Stellar team's review:
+
+| Reviewer point | Our response | Status |
+|---|---|---|
+| Confirmed working: cargo 4/4 (incl. corrupted-proof + VK-mismatch), nargo 3/3, full bb.js→Freighter→testnet pipeline, Real-vs-Simulated table | Preserved untouched | ✅ locked |
+| "build that Phase 5 pool contract so no plaintext transfer touches the chain" | `arcanum_pool` contract: `shielded_transfer` moves internal balances only, emits proof hash, **no SEP-41 transfer event** — 6/6 tests incl. one asserting the ledger is untouched | 🟡 **contract done**, deploy + frontend pending |
+| "add one 'Coming Soon' module with a real circuit to show the pattern generalizes" | Payroll circuit (Phase 5b) | ⬜ not started |
+| "pin a setup script for nargo beta.9 + bb 0.87.0 … without toolchain skew" | Phase 5c script → installs to `~/.zbank-toolchain/` | ⬜ not started — **skew is live on this machine** (see note) |
+| "worth bringing to the Stellar Community Fund" | SCF application (Phase 7) | ⬜ not started |
+
+> **Session corrections (2026-07):**
+> - New contract named `arcanum_pool`, not `zbank_pool` (the `zbank_*` names were retired for ΛRCΛNUM).
+> - Build target is `wasm32v1-none`, not the TODO's `wasm32-unknown-unknown` (soroban-sdk 26 rejects the old target).
+> - ⚠️ **Toolchain skew is currently active**: the default `nargo`/`bb` on PATH are beta.22 / bb 5.0-nightly, while the project requires beta.9 / bb 0.87.0. The correct pinned binaries exist at `~/.zbank-toolchain/{nargo/nargo, bb/bb}`. Phase 5c must fix this — see the corrected section below.
+
+---
+
 ## What the Stellar team confirmed works ✅ DO NOT TOUCH
 
 - [x] cargo test 4/4 — corrupted proof rejection, cross-circuit VK mismatch rejection
@@ -113,39 +132,60 @@ fn main(
 
 The Stellar review said: "Pin a setup script for nargo beta.9 + bb 0.87.0 so others can regenerate proofs without toolchain skew."
 
+> ⚠️ **Corrected from the original draft.** The first draft used `noirup --version beta.9`
+> and `bbup --version 0.87.0`, which install to the *default* PATH location and would
+> **overwrite** whatever nargo/bb the user already has. This repo deliberately pins the
+> binaries in `~/.zbank-toolchain/` (see `circuits/README.md`) so they never clobber the
+> default. The script below installs there via release tarballs and invokes the pinned
+> paths explicitly — matching how the project actually works.
+
 - [ ] Create `scripts/setup-toolchain.sh`:
 
 ```bash
-#!/bin/bash
-# ARCANUM Toolchain Setup
-# Installs exact versions required to regenerate ZK proofs
-# nargo beta.9 + bb 0.87.0 (keccak transcripts)
-# Usage: bash scripts/setup-toolchain.sh
+#!/usr/bin/env bash
+# ARCANUM Toolchain Setup — pins the EXACT versions the on-chain UltraHonk verifier
+# expects (bb 0.87 keccak-transcript format). Installs into ~/.zbank-toolchain so it
+# never clobbers a default nargo/bb on PATH. Usage: bash scripts/setup-toolchain.sh
+set -euo pipefail
 
-set -e
+TC="$HOME/.zbank-toolchain"
+NARGO_VER="v1.0.0-beta.9"
+BB_VER="v0.87.0"
 
-echo "Installing nargo beta.9..."
-curl -L https://raw.githubusercontent.com/noir-lang/noirup/main/install | bash
-noirup --version beta.9
-echo "nargo $(nargo --version) installed"
+# arch/os → release asset name
+case "$(uname -s)-$(uname -m)" in
+  Darwin-arm64)  NARGO_ASSET="nargo-aarch64-apple-darwin.tar.gz";  BB_ASSET="barretenberg-arm64-darwin.tar.gz" ;;
+  Darwin-x86_64) NARGO_ASSET="nargo-x86_64-apple-darwin.tar.gz";   BB_ASSET="barretenberg-x86_64-darwin.tar.gz" ;;
+  Linux-x86_64)  NARGO_ASSET="nargo-x86_64-unknown-linux-gnu.tar.gz"; BB_ASSET="barretenberg-x86_64-linux-gnu.tar.gz" ;;
+  *) echo "Unsupported platform: $(uname -s)-$(uname -m)"; exit 1 ;;
+esac
 
-echo "Installing bb 0.87.0..."
-curl -L https://raw.githubusercontent.com/AztecProtocol/aztec-packages/master/barretenberg/bbup/install | bash
-bbup --version 0.87.0
-echo "bb $(bb --version) installed"
+mkdir -p "$TC/nargo" "$TC/bb"
+echo "Installing nargo $NARGO_VER → $TC/nargo"
+curl -sL "https://github.com/noir-lang/noir/releases/download/$NARGO_VER/$NARGO_ASSET" | tar -xz -C "$TC/nargo"
+echo "Installing bb $BB_VER → $TC/bb"
+curl -sL "https://github.com/AztecProtocol/aztec-packages/releases/download/$BB_VER/$BB_ASSET" | tar -xz -C "$TC/bb"
 
 echo ""
-echo "ARCANUM toolchain ready."
-echo "nargo: $(nargo --version)"
-echo "bb:    $(bb --version)"
+echo "Pinned toolchain ready (do NOT use bare 'nargo'/'bb' — they may be a newer PATH version):"
+echo "  nargo: $("$TC/nargo/nargo" --version | head -1)   # expect 1.0.0-beta.9"
+echo "  bb:    $("$TC/bb/bb" --version | head -1)          # expect 0.87.0"
 echo ""
-echo "To regenerate proofs:"
-echo "  cd circuits/compliance_circuit && nargo execute witness && bb prove_ultra_honk ..."
-echo "  cd circuits/amount_circuit     && nargo execute witness && bb prove_ultra_honk ..."
-echo "  cd circuits/solvency_circuit   && nargo execute witness && bb prove_ultra_honk ..."
+echo "Regenerate proofs with the pinned binaries and a keccak transcript, e.g.:"
+echo "  cd circuits/amount_circuit"
+echo "  \"$TC/nargo/nargo\" execute"
+echo "  \"$TC/bb/bb\" prove --scheme ultra_honk --oracle_hash keccak \\"
+echo "     --bytecode_path target/amount_circuit.json --witness_path target/amount_circuit.gz \\"
+echo "     --output_path target --output_format bytes_and_fields"
 ```
 
+> Flags verified against `circuits/README.md`: `--scheme ultra_honk --oracle_hash keccak`
+> and `--output_format bytes_and_fields` are mandatory — without `--oracle_hash keccak`
+> the proof uses a poseidon transcript and the Soroban verifier rejects it.
+
 - [ ] `chmod +x scripts/setup-toolchain.sh`
+- [ ] Verify pinned versions print `1.0.0-beta.9` and `0.87.0` (NOT the PATH beta.22 / bb 5.0)
+- [ ] Confirm exact `bb prove` flags against `circuits/README.md` (scheme/oracle_hash must match the verifier crate's format)
 - [ ] Test on a clean Mac environment
 - [ ] Push to repo
 
