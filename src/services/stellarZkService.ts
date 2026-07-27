@@ -70,6 +70,85 @@ async function fetchBalanceStroops(walletAddress: string): Promise<bigint> {
   return toStroops(parseFloat(native.balance));
 }
 
+/** Guard: the shielded pool flow requires the pool contract to be deployed. */
+function requirePool(): string {
+  if (!CONTRACTS.pool) {
+    throw new Error(
+      'Shielded pool is not deployed yet. Deploy arcanum_pool and set CONTRACTS.pool in src/config/contracts.ts.'
+    );
+  }
+  return CONTRACTS.pool;
+}
+
+/**
+ * Build → simulate (prepare) → sign in Freighter → submit → poll to finality.
+ * Shared by every pool operation. Simulation attaches auth + resource fees and
+ * is where an invalid proof or insufficient balance is rejected before signing.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function submitPoolOp(
+  operation: any,
+  sourceAddress: string,
+  onProgress: ProgressCallback,
+  successMsg: string
+): Promise<{ txHash: string; ledgerIndex: number }> {
+  const [sdk, freighter] = await Promise.all([
+    import('@stellar/stellar-sdk'),
+    import('@stellar/freighter-api'),
+  ]);
+  const { TransactionBuilder, BASE_FEE, rpc } = sdk;
+
+  const server = new rpc.Server(CONTRACTS.sorobanRpcUrl);
+  const account = await server.getAccount(sourceAddress);
+
+  const tx = new TransactionBuilder(account, {
+    fee: (Number(BASE_FEE) * 10).toString(),
+    networkPassphrase: CONTRACTS.networkPassphrase,
+  })
+    .addOperation(operation)
+    .setTimeout(120)
+    .build();
+
+  const prepared = await server.prepareTransaction(tx);
+
+  onProgress('generating', 'Awaiting signature in Freighter...');
+  const signed = await freighter.signTransaction(prepared.toXDR(), {
+    networkPassphrase: CONTRACTS.networkPassphrase,
+    address: sourceAddress,
+  });
+  if (signed.error || !signed.signedTxXdr) {
+    onProgress('failed', signed.error?.message || 'Signature rejected in Freighter.');
+    throw new Error(signed.error?.message || 'Transaction signing rejected');
+  }
+
+  onProgress('generating', 'Submitting to Stellar testnet...');
+  const sendResponse = await server.sendTransaction(
+    TransactionBuilder.fromXDR(signed.signedTxXdr, CONTRACTS.networkPassphrase)
+  );
+  if (sendResponse.status === 'ERROR') {
+    onProgress('failed', 'Transaction rejected by the network.');
+    throw new Error('Transaction submission failed');
+  }
+
+  const deadline = Date.now() + 60_000;
+  for (;;) {
+    const result = await server.getTransaction(sendResponse.hash);
+    if (result.status === 'SUCCESS') {
+      onProgress('success', successMsg);
+      return { txHash: sendResponse.hash, ledgerIndex: result.ledger };
+    }
+    if (result.status === 'FAILED') {
+      onProgress('failed', 'Transaction reverted on-chain — no balances changed.');
+      throw new Error('Pool operation failed on-chain');
+    }
+    if (Date.now() > deadline) {
+      onProgress('failed', 'Timed out waiting for confirmation.');
+      throw new Error('Confirmation timeout');
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
+}
+
 /**
  * ZK Proof & Stellar Integration Service.
  * Proof generation is REAL (Noir + UltraHonk, keccak transcript, in the
@@ -240,6 +319,129 @@ export const stellarZkService = {
       }
       await new Promise((resolve) => setTimeout(resolve, 1500));
     }
+  },
+
+  /**
+   * SHIELDED POOL (Phase 5) — routes value so no plaintext transfer touches
+   * the ledger. Deposits/withdrawals are visible; shielded transfers move only
+   * internal balances and emit just a proof hash.
+   * Requires `CONTRACTS.pool` to be set (post-deploy); until then these throw.
+   */
+
+  /** Move XLM into the pool, crediting the caller's internal shielded balance. */
+  async depositToPool(
+    from: string,
+    amount: number,
+    onProgress: ProgressCallback
+  ): Promise<{ txHash: string; ledgerIndex: number }> {
+    const poolId = requirePool();
+    const sdk = await import('@stellar/stellar-sdk');
+    const { Contract, Address, nativeToScVal } = sdk;
+
+    const operation = new Contract(poolId).call(
+      'deposit',
+      Address.fromString(from).toScVal(),
+      nativeToScVal(toStroops(amount), { type: 'i128' })
+    );
+    onProgress('generating', 'Depositing into the shielded pool...');
+    return submitPoolOp(
+      operation,
+      from,
+      onProgress,
+      'Deposit confirmed. Funds are now in your shielded pool balance.'
+    );
+  },
+
+  /**
+   * The private transfer: verify both proofs on-chain, then move value between
+   * internal pool balances. No token transfer, so no sender/recipient/amount
+   * ever lands on the public ledger — only the proof hash.
+   */
+  async shieldedTransfer(
+    complianceProof: ProofResult,
+    amountProof: ProofResult,
+    payment: { sender: string; recipient: string; amount: number },
+    onProgress: ProgressCallback
+  ): Promise<{ txHash: string; ledgerIndex: number }> {
+    const poolId = requirePool();
+    const [{ publicInputsToBytes }, sdk] = await Promise.all([
+      loadProver(),
+      import('@stellar/stellar-sdk'),
+    ]);
+    const { Contract, Address, nativeToScVal } = sdk;
+
+    onProgress('generating', 'Building shielded transfer (no amount will touch the public ledger)...');
+    const operation = new Contract(poolId).call(
+      'shielded_transfer',
+      Address.fromString(payment.sender).toScVal(),
+      Address.fromString(payment.recipient).toScVal(),
+      nativeToScVal(toStroops(payment.amount), { type: 'i128' }),
+      nativeToScVal(publicInputsToBytes(complianceProof.publicInputs), { type: 'bytes' }),
+      nativeToScVal(complianceProof.proof, { type: 'bytes' }),
+      nativeToScVal(publicInputsToBytes(amountProof.publicInputs), { type: 'bytes' }),
+      nativeToScVal(amountProof.proof, { type: 'bytes' })
+    );
+    return submitPoolOp(
+      operation,
+      payment.sender,
+      onProgress,
+      'Shielded transfer settled inside the pool — no sender, recipient, or amount on the public ledger.'
+    );
+  },
+
+  /** Release value from the caller's internal balance to a wallet. */
+  async withdrawFromPool(
+    owner: string,
+    amount: number,
+    recipient: string,
+    onProgress: ProgressCallback
+  ): Promise<{ txHash: string; ledgerIndex: number }> {
+    const poolId = requirePool();
+    const sdk = await import('@stellar/stellar-sdk');
+    const { Contract, Address, nativeToScVal } = sdk;
+
+    const operation = new Contract(poolId).call(
+      'withdraw',
+      Address.fromString(owner).toScVal(),
+      nativeToScVal(toStroops(amount), { type: 'i128' }),
+      Address.fromString(recipient).toScVal()
+    );
+    onProgress('generating', 'Withdrawing from the shielded pool...');
+    return submitPoolOp(
+      operation,
+      owner,
+      onProgress,
+      'Withdrawal confirmed. Funds released to the recipient wallet.'
+    );
+  },
+
+  /** Read an address's shielded balance (in XLM) via simulation — no signature. */
+  async getShieldedBalance(address: string): Promise<number> {
+    const poolId = requirePool();
+    const sdk = await import('@stellar/stellar-sdk');
+    const { Contract, Address, TransactionBuilder, BASE_FEE, rpc, scValToNative } = sdk;
+
+    const server = new rpc.Server(CONTRACTS.sorobanRpcUrl);
+    const account = await server.getAccount(address);
+    const operation = new Contract(poolId).call(
+      'get_shielded_balance',
+      Address.fromString(address).toScVal()
+    );
+    const tx = new TransactionBuilder(account, {
+      fee: BASE_FEE,
+      networkPassphrase: CONTRACTS.networkPassphrase,
+    })
+      .addOperation(operation)
+      .setTimeout(60)
+      .build();
+
+    const sim = await server.simulateTransaction(tx);
+    if (rpc.Api.isSimulationError(sim)) {
+      throw new Error(sim.error);
+    }
+    const retval = sim.result?.retval;
+    const raw = retval ? (scValToNative(retval) as bigint | number) : 0n;
+    return Number(raw) / 1e7;
   },
 
   /**

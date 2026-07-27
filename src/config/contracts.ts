@@ -9,6 +9,12 @@
 export const CONTRACTS = {
   /** ARCANUM Verifier contract id */
   verifier: 'CAHC6LH4MWQXFSZ7Z4UNY3ZCHGU4III6SKA5YKKXMTIMARYIO72PMCXV',
+  /**
+   * ARCANUM Shielded Pool contract id (`arcanum_pool`).
+   * Empty until Phase 5 deploy — set this to the deployed id and the
+   * shielded-pool flow in the UI goes live. See `isPoolDeployed()`.
+   */
+  pool: '' as string,
   /** Native XLM Stellar Asset Contract on testnet */
   nativeToken: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC',
   network: 'testnet',
@@ -16,6 +22,11 @@ export const CONTRACTS = {
   sorobanRpcUrl: 'https://soroban-testnet.stellar.org',
   horizonUrl: 'https://horizon-testnet.stellar.org',
 } as const;
+
+/** True once the shielded pool contract id has been set post-deploy. */
+export function isPoolDeployed(): boolean {
+  return CONTRACTS.pool.length > 0;
+}
 
 export function explorerTxUrl(txHash: string): string {
   return `https://stellar.expert/explorer/testnet/tx/${txHash}`;

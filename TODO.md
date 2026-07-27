@@ -73,12 +73,18 @@ Withdraw:  Pool releases funds to recipient wallet (visible but amount is separa
 
 ### Frontend Updates (SendPayment + Treasury)
 
-- [ ] Update `SendPayment` flow — call `shielded_transfer()` on pool contract instead of direct token transfer
+> Service layer is ready and deploy-gated: `CONTRACTS.pool` + `isPoolDeployed()` in
+> `config/contracts.ts`, and `depositToPool` / `shieldedTransfer` / `withdrawFromPool` /
+> `getShieldedBalance` in `stellarZkService.ts`. The UI-component wiring below is
+> intentionally left until the pool is deployed and `CONTRACTS.pool` is set, so the
+> currently-working (reviewer-praised) verify_payment demo isn't broken beforehand.
+
+- [x] Update `stellarZkService.ts` — pool methods added (deposit, shielded_transfer, withdraw, get_shielded_balance), all guarded by `requirePool()`
+- [ ] Update `SendPayment` flow — call `shieldedTransfer()` instead of `verifyOnStellar()` when `isPoolDeployed()` (gate behind deploy)
 - [ ] Add "Deposit to Pool" button in Treasury view — funds institution's pool balance before they can send
 - [ ] Add "Withdraw from Pool" button in Treasury view
-- [ ] Update Treasury balance display — show shielded pool balance from `get_shielded_balance()` instead of raw XLM wallet balance
-- [ ] Update `stellarZkService.ts` — route payment through pool contract
-- [ ] Test full end-to-end: deposit → send shielded payment → confirm no amount in ledger event → withdraw
+- [ ] Update Treasury balance display — show `getShieldedBalance()` when pool is deployed
+- [ ] Test full end-to-end: deposit → send shielded payment → confirm no amount in ledger event → withdraw (needs deploy)
 
 ---
 
