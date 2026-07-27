@@ -13,7 +13,7 @@ Direct answer to each point in the Stellar team's review:
 | Reviewer point | Our response | Status |
 |---|---|---|
 | Confirmed working: cargo 4/4 (incl. corrupted-proof + VK-mismatch), nargo 3/3, full bb.js→Freighter→testnet pipeline, Real-vs-Simulated table | Preserved untouched | ✅ locked |
-| "build that Phase 5 pool contract so no plaintext transfer touches the chain" | `arcanum_pool` contract: `shielded_transfer` moves internal balances only, emits proof hash, **no SEP-41 transfer event** — 6/6 tests incl. one asserting the ledger is untouched | 🟡 **contract done**, deploy + frontend pending |
+| "build that Phase 5 pool contract so no plaintext transfer touches the chain" | `arcanum_pool` deployed to testnet (`CCC3C2GX…E27B`) and **privacy verified live**: shielded transfer of 40 XLM emitted only a proof-hash event, recipient wallet unchanged (0 delta). Full deposit→transfer→withdraw cycle passed. | ✅ **done on-chain** — UI wiring pending |
 | "add one 'Coming Soon' module with a real circuit to show the pattern generalizes" | `payroll_circuit`: proves pool covers payroll + every recipient approved, salaries/identities private — nargo test 3/3, proof verifies (14,592 B), UI badge → "Circuit Ready" | ✅ **done** |
 | "pin a setup script for nargo beta.9 + bb 0.87.0 … without toolchain skew" | `scripts/setup-toolchain.sh` → installs pinned binaries to `~/.zbank-toolchain/`, verified beta.9 / bb 0.87.0 resolve | ✅ **done** (clean-machine test pending) |
 | "worth bringing to the Stellar Community Fund" | SCF application (Phase 7) | ⬜ not started |
@@ -68,8 +68,9 @@ Withdraw:  Pool releases funds to recipient wallet (visible but amount is separa
   - [x] insufficient-balance transfer rejected
   - [x] overdraw withdrawal rejected
 - [x] Build: `cargo build -p arcanum_pool --target wasm32v1-none --release` (SDK 26 requires `wasm32v1-none`, not the older `wasm32-unknown-unknown`) → 51,705 byte wasm
-- [ ] Deploy to Stellar testnet — **run `bash scripts/deploy-pool.sh`** (builds wasm, hex-encodes VKs, deploys with `zbank-deployer`). Script ready + syntax-checked; needs your key to sign.
-- [ ] Save pool contract address to `src/config/contracts.ts` (`pool: '<id>'`) — the script prints the exact line
+- [x] Deploy to Stellar testnet — deployed `CCC3C2GXO7F57LWXBDXNE423WUC2ZJBRPMZ2O2Y6WVEVJZQ676MIE27B` via `scripts/deploy-pool.sh`
+- [x] Save pool contract address to `src/config/contracts.ts` (`pool: 'CCC3C2GX…E27B'`)
+- [x] **On-chain privacy test passed**: deposit 100 → shielded_transfer 40 (only proof-hash event, recipient wallet delta 0) → withdraw 60. Internal balances tracked exactly.
 
 ### Frontend Updates (SendPayment + Treasury)
 
