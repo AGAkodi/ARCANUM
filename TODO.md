@@ -68,8 +68,8 @@ Withdraw:  Pool releases funds to recipient wallet (visible but amount is separa
   - [x] insufficient-balance transfer rejected
   - [x] overdraw withdrawal rejected
 - [x] Build: `cargo build -p arcanum_pool --target wasm32v1-none --release` (SDK 26 requires `wasm32v1-none`, not the older `wasm32-unknown-unknown`) → 51,705 byte wasm
-- [ ] Deploy to Stellar testnet (needs `zbank-deployer` key + compliance/amount VK bytes + token SAC address)
-- [ ] Save pool contract address to `src/config/contracts.ts`
+- [ ] Deploy to Stellar testnet — **run `bash scripts/deploy-pool.sh`** (builds wasm, hex-encodes VKs, deploys with `zbank-deployer`). Script ready + syntax-checked; needs your key to sign.
+- [ ] Save pool contract address to `src/config/contracts.ts` (`pool: '<id>'`) — the script prints the exact line
 
 ### Frontend Updates (SendPayment + Treasury)
 
