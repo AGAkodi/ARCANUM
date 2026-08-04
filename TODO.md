@@ -209,23 +209,14 @@ echo "     --output_path target --output_format bytes_and_fields"
 **Who:** Monarch | **Estimated time:** 2 hours
 *Do this after shielded pool is deployed*
 
-- [ ] Update Real-vs-Simulated table:
-  - "Transfer amount hiding" → ✅ Real (shielded pool deployed)
-  - "Private Payroll" → 🔵 Circuit Ready (nargo test passes, UI integration coming)
-- [ ] Add shielded pool contract address to Contract Addresses table
-- [ ] Add setup script instructions under "How to Run Locally":
-  ```bash
-  bash scripts/setup-toolchain.sh
-  ```
-- [ ] Update architecture diagram to include pool contract flow
-- [ ] Add "Regenerating Proofs" section:
-  ```
-  Pinned toolchain: nargo beta.9 + bb 0.87.0 (keccak transcripts)
-  bash scripts/setup-toolchain.sh
-  cd circuits/compliance_circuit
-  nargo execute witness
-  bb prove_ultra_honk -b ./target/compliance_circuit.json -w ./target/witness.gz -o ./target/proof
-  ```
+- [x] Update Real-vs-Simulated table:
+  - "Transfer amount hiding" → ✅ Real (shielded pool deployed + verified on-chain)
+  - "Private Payroll" → 🔵 Circuit Ready (nargo test 3/3, proof verifies)
+- [x] Add shielded pool contract address to Contract Addresses table (+ note on the privacy property)
+- [x] Add setup script instructions under "How to Run Locally" (`bash scripts/setup-toolchain.sh`)
+- [x] Update architecture diagram to include pool contract flow (Route A/B + deposit/transfer/withdraw)
+- [x] Add "Regenerating Proofs" section (with the correct bb 0.87 `prove --scheme ultra_honk --oracle_hash keccak` flags, not the old `prove_ultra_honk`)
+- [x] Also fixed: toolchain path `~/.arcanum-toolchain` → `~/.zbank-toolchain`; repo structure; roadmap; known-limitations (resolved + honest scope note)
 
 ---
 

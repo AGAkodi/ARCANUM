@@ -88,11 +88,12 @@ User fills payment form (recipient, amount)
         │
         ▼
 [Stellar Testnet — on-chain]
-  Soroban verifier contract receives proofs
-  Verifies both proofs using BN254 host functions
-  If valid → executes token transfer
-  If invalid → reverts, no funds move
-  Emits event: proof hash only (no private data)
+  Route A — verifier contract (visible settlement):
+    Verifies both proofs → executes token transfer → emits proof-hash event
+  Route B — shielded pool (Phase 5, when sender has a pool balance):
+    Verifies both proofs → moves INTERNAL balances only → NO token transfer
+    → emits proof-hash event, so no amount/sender/recipient hits the ledger
+  Either route reverts with no state change if a proof is invalid.
         │
         ▼
 [Frontend — result]
@@ -101,14 +102,27 @@ User fills payment form (recipient, amount)
   Amount and identities: not visible to public
 ```
 
+Shielded pool flow (Phase 5):
+
+```
+Deposit:   wallet ──(visible)──▶ arcanum_pool   (credits internal balance)
+Transfer:  proofs ──▶ shielded_transfer ──▶ internal balances only (no ledger event)
+Withdraw:  arcanum_pool ──(visible)──▶ wallet   (debits internal balance)
+```
+
 ## Contract Addresses (Stellar Testnet)
 
 | Contract | Address |
 | :--- | :--- |
 | ZK Payment Verifier | CAHC6LH4MWQXFSZ7Z4UNY3ZCHGU4III6SKA5YKKXMTIMARYIO72PMCXV |
 | Solvency Attestation | CAHC6LH4MWQXFSZ7Z4UNY3ZCHGU4III6SKA5YKKXMTIMARYIO72PMCXV |
+| Shielded Pool (`arcanum_pool`) | CCC3C2GXO7F57LWXBDXNE423WUC2ZJBRPMZ2O2Y6WVEVJZQ676MIE27B |
 
 Verification keys (VKs) are stored immutably in the contract. Changing a circuit requires redeploying.
+
+The shielded pool holds the compliance + amount VKs and custodies XLM. Verified on
+testnet: a shielded transfer emits only a proof-hash event — no sender, recipient,
+or amount reaches the public ledger.
 
 ## Repo Structure
 
@@ -136,9 +150,15 @@ ARCANUM/
 │   ├── README.md               # Pinned toolchain versions
 │   ├── toy_circuit/            # Pipeline validation circuit
 │   ├── compliance_circuit/     # Sanctions check circuit
-│   └── amount_circuit/         # Range proof circuit
+│   ├── amount_circuit/         # Range proof circuit
+│   ├── solvency_circuit/       # Assets > liabilities circuit
+│   └── payroll_circuit/        # Private payroll circuit (Phase 5b)
 ├── contracts/
-│   └── arcanum_verifier/         # Soroban smart contract (Rust)
+│   ├── arcanum_verifier/       # Verifier Soroban contract (Rust)
+│   └── arcanum_pool/           # Shielded pool Soroban contract (Phase 5)
+├── scripts/
+│   ├── setup-toolchain.sh      # Pin nargo beta.9 + bb 0.87.0
+│   └── deploy-pool.sh          # Deploy arcanum_pool to testnet
 └── public/
     └── bb/                     # bb.js runtime bundle (auto-copied on pnpm install)
 ```
@@ -159,7 +179,13 @@ cd ARCANUM
 pnpm install
 ```
 
-The `postinstall` script automatically copies the `bb.js` bundle to `public/bb/`. No manual steps needed.
+The `postinstall` script automatically copies the `bb.js` bundle to `public/bb/`. No manual steps needed to run the app — the compiled circuits ship with the repo.
+
+To **regenerate proofs** (only needed if you change a circuit), first pin the exact toolchain:
+
+```bash
+bash scripts/setup-toolchain.sh
+```
 
 ### Environment variables
 
@@ -184,11 +210,31 @@ Open `http://localhost:3000`, connect Freighter (set to Testnet), fund your wall
 
 Pinned versions — do not upgrade without redeploying the contract:
 
-* **nargo**: `beta.9`
+* **nargo**: `1.0.0-beta.9`
 * **bb**: `0.87.0` (keccak transcripts)
-* **Binaries**: `~/.arcanum-toolchain/`
+* **Binaries**: `~/.zbank-toolchain/{nargo/nargo, bb/bb}`
 
-Full setup instructions in `circuits/README.md`.
+Pin them in one step (installs the exact versions without clobbering any default
+nargo/bb on your PATH):
+
+```bash
+bash scripts/setup-toolchain.sh
+```
+
+### Regenerating proofs
+
+With `NARGO=~/.zbank-toolchain/nargo/nargo` and `BB=~/.zbank-toolchain/bb/bb`, from a
+circuit directory (e.g. `circuits/amount_circuit`):
+
+```bash
+$NARGO execute
+$BB prove --scheme ultra_honk --oracle_hash keccak \
+  --bytecode_path target/amount_circuit.json --witness_path target/amount_circuit.gz \
+  --output_path target --output_format bytes_and_fields
+```
+
+The `--oracle_hash keccak` flag is mandatory — without it the proof uses a poseidon
+transcript and the Soroban verifier rejects it. Full details in `circuits/README.md`.
 
 ## What's Real vs What's Simulated
 
@@ -204,18 +250,32 @@ We're being honest about this as the hackathon brief requests.
 | Stellar transaction | ✅ Real | Funds move on testnet |
 | Live wallet balance | ✅ Real | Horizon API |
 | Compliance failure case | ✅ Real | Sanctioned recipient blocks payment |
-| Transfer amount hiding | ⚠️ Partial | ZK proof hides amount from proof; on-chain transfer event still shows value. Phase 5 shielded pool contract fixes this. |
+| Transfer amount hiding | ✅ Real | Shielded pool (`arcanum_pool`) deployed on testnet; shielded transfers move internal balances and emit only a proof hash — verified on-chain that no amount reaches the ledger. |
 | Selective disclosure keys | 🔵 Simulated | UI built, cryptographic key generation not yet implemented |
 | Private recurring payments | 🔵 Simulated | UI built, circuit not yet implemented |
-| Private payroll | 🔵 Simulated | UI built, circuit not yet implemented |
+| Private payroll | 🔵 Circuit Ready | Real Noir circuit — `nargo test` 3/3, UltraHonk proof verifies (14,592 B). On-chain integration coming. |
 | Confidential escrow | 🔵 Simulated | UI built, circuit not yet implemented |
 | Solvency proof | 🔵 Simulated | Circuit written, on-chain attestation pending |
 | Payment history persistence | 🔵 Simulated | Resets on refresh — localStorage planned in Phase 8 |
 
 ## Known Limitations
 
-### Transfer amount visible in on-chain event
-The ZK amount range proof cryptographically hides the amount from the proof itself, but the underlying Stellar token transfer operation still records the amount in the transaction event log. This is visible to anyone watching the chain. The fix is a shielded pool contract (Phase 5) where transfers happen inside a shared pool — no direct wallet-to-wallet transfer is ever recorded. This is a known, documented limitation, not an oversight.
+### Transfer amount visible in on-chain event — ✅ RESOLVED (Phase 5)
+Previously, the ZK amount range proof hid the amount from the proof itself, but the
+underlying Stellar token transfer still recorded the amount in the transaction event
+log. The shielded pool (`arcanum_pool`) fixes this: transfers happen inside a shared
+pool via `shielded_transfer`, which verifies the proofs and moves internal balances
+without any token transfer — so no sender, recipient, or amount is ever recorded.
+Verified on testnet (a shielded transfer left the recipient's wallet balance
+unchanged while its internal balance updated). Deposits and withdrawals remain
+visible by design.
+
+### Amount hiding is at the ledger-event level, not full commitment-based
+The pool stores internal balances as plaintext `i128` in contract storage, so amounts
+are hidden from ledger *events* but not from someone reading contract state. Full
+amount-hiding (commitments + nullifiers) is future work; the current design delivers
+the reviewer-requested property that no plaintext transfer appears on-chain, with
+every internal move gated by a real on-chain proof verification.
 
 ### Testnet only
 ARCANUM runs on Stellar Testnet. Mainnet deployment requires a security audit of the Soroban contract and the ZK circuits before handling real funds.
@@ -227,9 +287,11 @@ Proof generation runs client-side in the browser. On slower devices, the complia
 
 | Phase | Feature | Status |
 | :--- | :--- | :--- |
-| Phase 5 | Shielded pool — full amount hiding on-chain | Planned |
+| Phase 5 | Shielded pool — no plaintext transfer on-chain | ✅ Deployed + verified on testnet |
+| Phase 5b | Private payroll circuit | ✅ Circuit ready (`nargo test` 3/3, proof verifies) |
+| Phase 5c | Pinned toolchain setup script | ✅ `scripts/setup-toolchain.sh` |
 | Phase 6 | Real selective disclosure with encryption keys | Planned |
-| Phase 7 | Solvency proof on-chain attestation | Planned |
+| Phase 7 | Commitment-based amount hiding + mainnet audit | Planned |
 | Phase 8 | Payment history persistence | Planned |
 
 ## Team
