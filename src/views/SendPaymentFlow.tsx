@@ -226,6 +226,17 @@ export const SendPaymentFlow: React.FC = () => {
                   <span className="result-detail-val" style={{ color: 'var(--color-success)' }}>PROVEN & COMPLIANT</span>
                 </div>
                 <div className="result-detail-row">
+                  <span className="result-detail-lbl">Settlement Route</span>
+                  <span
+                    className="result-detail-val"
+                    style={{ color: generatedTx.viaShieldedPool ? 'var(--color-accent)' : 'var(--color-text-secondary)' }}
+                  >
+                    {generatedTx.viaShieldedPool
+                      ? 'Shielded pool — no amount on public ledger'
+                      : 'On-chain verified transfer'}
+                  </span>
+                </div>
+                <div className="result-detail-row">
                   <span className="result-detail-lbl">Transaction Hash</span>
                   <span className="result-detail-val">
                     {isRealTxHash(generatedTx.stellarTxHash) ? (

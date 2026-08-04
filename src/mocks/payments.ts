@@ -12,6 +12,8 @@ export interface PaymentTransaction {
   zkProofHash: string;
   stellarTxHash: string;
   isPrivate: boolean;
+  /** True when settled through the shielded pool (no amount on the public ledger). */
+  viaShieldedPool?: boolean;
   memo: string;
   withinLimit?: boolean;
   multiSigApproved?: boolean;

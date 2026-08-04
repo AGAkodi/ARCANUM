@@ -522,6 +522,7 @@ export const stellarZkService = {
         zkProofHash: compProof.proofHex.slice(0, 34),
         stellarTxHash: stellarResult.txHash,
         isPrivate: true,
+        viaShieldedPool: routedThroughPool,
         memo: memo || (routedThroughPool ? 'Shielded pool transfer' : 'Institutional transfer')
       };
 
