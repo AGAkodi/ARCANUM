@@ -234,15 +234,18 @@ echo "     --output_path target --output_format bytes_and_fields"
 The Stellar review said: "Worth bringing to the Stellar Community Fund for continued support."
 Apply at: https://communityfund.stellar.org
 
-- [ ] Project description (250 words max — use README intro)
-- [ ] Problem statement — institutions can't transact privately on a public chain
-- [ ] Solution — ZK confidential payments + shielded pool for full on-chain privacy on Stellar
-- [ ] Current state — 4/4 cargo tests, 3/3 nargo tests, full pipeline verified on testnet
-- [ ] Roadmap — shielded pool (done by then), payroll circuit, selective disclosure keys, mainnet audit
-- [ ] Team — Monarch (@0xMonarch) + DGrayArea
-- [ ] Demo video link + GitHub link
-- [ ] Funding ask — shielded pool security audit + 3 additional circuits (payroll, escrow, supplier payments) + mainnet deployment
-- [ ] Submit application
+> All written content drafted in `SCF-APPLICATION.md`. Remaining: record the demo
+> video and actually submit (both are Monarch's to do — cannot be automated).
+
+- [x] Project description (in `SCF-APPLICATION.md`)
+- [x] Problem statement — institutions can't transact privately on a public chain
+- [x] Solution — ZK confidential payments + shielded pool for full on-chain privacy on Stellar
+- [x] Current state — 4/4 cargo tests, 3/3 nargo tests, pool deployed + privacy verified on testnet
+- [x] Roadmap — shielded pool (done), payroll circuit, commitment-based hiding, selective disclosure, mainnet audit
+- [x] Team — Monarch (@0xMonarch) + DGrayArea
+- [ ] Demo video link + GitHub link — GitHub link ready; **record the demo video**
+- [x] Funding ask — audit + 3 additional circuits (payroll, escrow, supplier payments) + mainnet deployment
+- [ ] Submit application at communityfund.stellar.org
 
 ---
 
@@ -261,12 +264,20 @@ Apply at: https://communityfund.stellar.org
 
 ## Definition of Done
 
-- [ ] Shielded pool contract deployed on testnet — no plaintext transfer amount in ledger events
-- [ ] Full send payment flow routed through pool contract end-to-end
-- [ ] Payroll circuit compiles, proves, and passes `nargo test`
-- [ ] Setup script tested and working on a clean Mac environment
-- [ ] README fully updated — all tables accurate, new contracts listed, setup script documented
-- [ ] SCF application submitted at communityfund.stellar.org
+- [x] Shielded pool contract deployed on testnet — no plaintext transfer amount in ledger events (verified on-chain)
+- [x] Full send payment flow routed through pool contract (service + UI; contract-level cycle verified end-to-end)
+- [x] Payroll circuit compiles, proves, and passes `nargo test` (3/3, proof verified 14,592 B)
+- [ ] Setup script tested and working on a clean Mac environment (works on this machine; clean-machine run pending)
+- [x] README fully updated — all tables accurate, new contracts listed, setup script documented
+- [ ] SCF application submitted at communityfund.stellar.org (drafted in `SCF-APPLICATION.md`; submit + demo video pending)
+
+### Still open (all require you, not code)
+- [ ] Interactive UI click-through with a Freighter wallet (deposit → send → withdraw)
+- [ ] Record demo video + submit SCF
+- [ ] Clean-machine toolchain test
+- [ ] Mainnet deploy (prepared; intentionally post-audit — see `MAINNET.md`)
+- [ ] Optional web polish remaining: deeper landing pass, ShieldedPoolPanel visual polish, full mobile/dashboard responsive audit
+      (done this session: trust strip, Send settlement-route indicator)
 
 ---
 
