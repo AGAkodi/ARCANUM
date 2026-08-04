@@ -16,7 +16,14 @@ Direct answer to each point in the Stellar team's review:
 | "build that Phase 5 pool contract so no plaintext transfer touches the chain" | `arcanum_pool` deployed to testnet (`CCC3C2GX…E27B`) and **privacy verified live**: shielded transfer of 40 XLM emitted only a proof-hash event, recipient wallet unchanged (0 delta). Full deposit→transfer→withdraw cycle passed. | ✅ **done on-chain** — UI wiring pending |
 | "add one 'Coming Soon' module with a real circuit to show the pattern generalizes" | `payroll_circuit`: proves pool covers payroll + every recipient approved, salaries/identities private — nargo test 3/3, proof verifies (14,592 B), UI badge → "Circuit Ready" | ✅ **done** |
 | "pin a setup script for nargo beta.9 + bb 0.87.0 … without toolchain skew" | `scripts/setup-toolchain.sh` → installs pinned binaries to `~/.zbank-toolchain/`, verified beta.9 / bb 0.87.0 resolve | ✅ **done** (clean-machine test pending) |
-| "worth bringing to the Stellar Community Fund" | SCF application (Phase 7) | ⬜ not started |
+| "worth bringing to the Stellar Community Fund" | `SCF-APPLICATION.md` drafted (all fields, verified figures) | 🟡 draft ready — needs demo video + submit |
+
+**Final cleanup + mainnet prep (this session):**
+- ✅ Payroll badge → "Circuit Ready" in `SupportingFeatureGrid` (gold accent, verified in-app); Treasury card already done.
+- ✅ Phase 6 README complete (pool address, setup script, regenerating proofs with correct bb 0.87 flags, architecture, tables).
+- ✅ Mainnet-ready: `config/contracts.ts` per-network blocks behind `ACTIVE_NETWORK`; `deploy-verifier.sh` + `deploy-pool.sh` NETWORK-parameterized; `MAINNET.md` go-live guide. Going live = 3 addresses + one flag.
+- ✅ `SCF-APPLICATION.md` drafted.
+- ⬜ Web refinement (open-ended) + record demo video + submit SCF.
 
 > **Session corrections (2026-07):**
 > - New contract named `arcanum_pool`, not `zbank_pool` (the `zbank_*` names were retired for ΛRCΛNUM).
