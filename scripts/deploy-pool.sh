@@ -10,12 +10,20 @@
 #   vk_compliance — compliance circuit VK bytes
 #   vk_amount     — amount circuit VK bytes
 #
-# Usage: bash scripts/deploy-pool.sh
+# Usage:
+#   bash scripts/deploy-pool.sh                              # testnet (default)
+#   NETWORK=mainnet SOURCE=my-mainnet-key bash scripts/deploy-pool.sh
 set -euo pipefail
 
-NETWORK="testnet"
-SOURCE="zbank-deployer"
-TOKEN="CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"  # native XLM SAC (src/config/contracts.ts)
+NETWORK="${NETWORK:-testnet}"
+SOURCE="${SOURCE:-zbank-deployer}"
+
+# Native XLM SAC per network (verify: stellar contract id asset --asset native --network <net>)
+case "$NETWORK" in
+  testnet) TOKEN="CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC" ;;
+  mainnet) TOKEN="CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA" ;;
+  *) echo "Unknown NETWORK '$NETWORK' (use testnet|mainnet)"; exit 1 ;;
+esac
 WASM="contracts/target/wasm32v1-none/release/arcanum_pool.wasm"
 VK_COMPLIANCE="circuits/compliance_circuit/target/vk"
 VK_AMOUNT="circuits/amount_circuit/target/vk"

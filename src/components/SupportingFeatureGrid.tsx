@@ -14,6 +14,8 @@ interface SupportCard {
   title: string;
   desc: string;
   icon: React.ReactNode;
+  /** Real circuit exists (nargo tests pass) — badge reads "Circuit Ready" in accent. */
+  ready?: boolean;
 }
 
 export const SupportingFeatureGrid: React.FC = () => {
@@ -21,7 +23,8 @@ export const SupportingFeatureGrid: React.FC = () => {
     {
       title: 'Private Payroll',
       desc: 'Process cross-border employee payments with amounts and identities shielded end-to-end.',
-      icon: <Users size={18} />
+      icon: <Users size={18} />,
+      ready: true
     },
     {
       title: 'Private Supplier Payments',
@@ -87,23 +90,23 @@ export const SupportingFeatureGrid: React.FC = () => {
               overflow: 'hidden'
             }}
           >
-            {/* Simulated Badge in top right */}
-            <span 
+            {/* Status badge: accent "Circuit Ready" for cards with a real circuit, muted "Simulated" otherwise */}
+            <span
               style={{
                 position: 'absolute',
                 top: '12px',
                 right: '12px',
                 fontSize: '0.6rem',
                 fontWeight: 700,
-                color: 'var(--color-text-muted)',
-                backgroundColor: 'rgba(255,255,255,0.04)',
-                border: '1px solid var(--border-color)',
+                color: c.ready ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                backgroundColor: c.ready ? 'rgba(212,175,55,0.10)' : 'rgba(255,255,255,0.04)',
+                border: c.ready ? '1px solid var(--color-accent)' : '1px solid var(--border-color)',
                 padding: '2px 6px',
                 borderRadius: '4px',
                 letterSpacing: '0.05em'
               }}
             >
-              SIMULATED
+              {c.ready ? 'CIRCUIT READY' : 'SIMULATED'}
             </span>
 
             {/* Icon Wrapper */}

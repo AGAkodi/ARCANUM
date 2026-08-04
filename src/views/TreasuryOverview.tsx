@@ -8,7 +8,7 @@ import { VerifiedBadge } from '../components/VerifiedBadge';
 import { RedactedValue } from '../components/RedactedValue';
 import { ComingSoonBadge } from '../components/ComingSoonBadge';
 import { ShieldedPoolPanel } from '../components/ShieldedPoolPanel';
-import { CONTRACTS } from '../config/contracts';
+import { CONTRACTS, explorerContractUrl } from '../config/contracts';
 import { 
   Briefcase, 
   Layers, 
@@ -353,7 +353,7 @@ export const TreasuryOverview: React.FC = () => {
                 <div style={{ marginTop: '4px' }}>
                   {solvencyAttestation.proofHash ? (
                     <a
-                      href="https://stellar.expert/explorer/testnet/contract/CAHC6LH4MWQXFSZ7Z4UNY3ZCHGU4III6SKA5YKKXMTIMARYIO72PMCXV"
+                      href={explorerContractUrl(CONTRACTS.verifier)}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)', color: 'var(--color-accent)', display: 'block', wordBreak: 'break-all', textDecoration: 'none' }}
