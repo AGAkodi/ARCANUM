@@ -6,6 +6,7 @@ import { Lock, Wallet, ArrowRight, ExternalLink, AlertTriangle } from 'lucide-re
 import { VerifiedBadge } from './VerifiedBadge';
 import { FeatureBreakdown } from './FeatureBreakdown';
 import { SupportingFeatureGrid } from './SupportingFeatureGrid';
+import { LiveOnChainStrip } from './LiveOnChainStrip';
 import { PageFooter } from './PageFooter';
 
 export const LandingPage: React.FC = () => {
@@ -217,7 +218,10 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-
+      {/* Live on-chain trust strip — real deployed contracts + verified privacy */}
+      <div className="landing-sub-section" style={{ marginTop: '1rem' }}>
+        <LiveOnChainStrip />
+      </div>
 
       {/* Alternating Feature Explanations */}
       <div className="landing-sub-section">
