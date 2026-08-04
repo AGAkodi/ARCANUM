@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, ShieldCheck } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, ShieldCheck, ExternalLink } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
 import { stellarZkService } from '../services/stellarZkService';
-import { isPoolDeployed } from '../config/contracts';
+import { isPoolDeployed, CONTRACTS, explorerContractUrl } from '../config/contracts';
 
 type Busy = null | 'deposit' | 'withdraw' | 'refresh';
 type Status = { kind: 'idle' | 'progress' | 'success' | 'error'; msg: string };
@@ -65,9 +65,10 @@ export const ShieldedPoolPanel: React.FC = () => {
 
   if (!isPoolDeployed()) return null;
 
-  const rowStyle: React.CSSProperties = { display: 'flex', gap: '0.5rem', marginTop: '0.75rem' };
+  const rowStyle: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.75rem' };
   const inputStyle: React.CSSProperties = {
-    flex: 1,
+    flex: '1 1 160px',
+    minWidth: '140px',
     padding: '0.6rem 0.75rem',
     borderRadius: '8px',
     border: '1px solid var(--border-color)',
@@ -94,16 +95,27 @@ export const ShieldedPoolPanel: React.FC = () => {
     <div className="card-premium accented" style={{ marginBottom: '3rem', padding: '1.75rem' }}>
       <div className="card-header-flex">
         <span className="card-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <ShieldCheck size={16} /> Shielded Pool
+          <ShieldCheck size={16} style={{ color: 'var(--color-accent)' }} /> Shielded Pool
         </span>
-        <button
-          onClick={() => void refresh()}
-          disabled={busy !== null}
-          aria-label="Refresh shielded balance"
-          style={{ ...btnStyle, padding: '0.4rem 0.6rem' }}
-        >
-          <RefreshCw size={14} className={busy === 'refresh' ? 'animate-spin' : undefined} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <a
+            href={explorerContractUrl(CONTRACTS.pool)}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="View pool contract on stellar.expert"
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: 'var(--color-text-muted)', textDecoration: 'none' }}
+          >
+            contract <ExternalLink size={12} />
+          </a>
+          <button
+            onClick={() => void refresh()}
+            disabled={busy !== null}
+            aria-label="Refresh shielded balance"
+            style={{ ...btnStyle, padding: '0.4rem 0.6rem' }}
+          >
+            <RefreshCw size={14} className={busy === 'refresh' ? 'animate-spin' : undefined} />
+          </button>
+        </div>
       </div>
 
       <div style={{ margin: '1rem 0' }}>
